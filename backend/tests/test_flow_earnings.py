@@ -50,7 +50,7 @@ def test_ingest_earnings_writes_rows(db_engine, monkeypatch):
     from app.flows import earnings as mod
     monkeypatch.setattr(mod, "current_sp500_universe", lambda: ["AAPL"])
     getter = _fake_http({"AAPL": SAMPLE_INCOME}, {"AAPL": SAMPLE_SURPRISES})
-    n = mod.ingest_earnings_daily(quarters=8, _http=getter)
+    n = mod.ingest_earnings_daily(quarters=8, http_override=getter)
     assert n == 2
 
 
@@ -58,8 +58,8 @@ def test_ingest_earnings_idempotent(db_engine, monkeypatch):
     from app.flows import earnings as mod
     monkeypatch.setattr(mod, "current_sp500_universe", lambda: ["AAPL"])
     getter = _fake_http({"AAPL": SAMPLE_INCOME}, {"AAPL": SAMPLE_SURPRISES})
-    mod.ingest_earnings_daily(quarters=8, _http=getter)
-    mod.ingest_earnings_daily(quarters=8, _http=getter)
+    mod.ingest_earnings_daily(quarters=8, http_override=getter)
+    mod.ingest_earnings_daily(quarters=8, http_override=getter)
 
 
 def test_missing_operating_income_handled():
