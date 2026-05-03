@@ -1,0 +1,38 @@
+[build]
+builder = "dockerfile"
+
+# ── FastAPI backend ────────────────────────────────────────────────────────────
+[[services]]
+name = "fastapi"
+buildCommand = "docker build -t pead-fastapi ./backend"
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+
+[[services]]
+name = "celery_worker"
+buildCommand = "docker build -t pead-celery ./backend"
+startCommand = "celery -A app.worker.celery_app worker --loglevel=info"
+
+[[services]]
+name = "prefect_server"
+# Uses pre-built Prefect 2.x image — pinned to 2-latest to avoid v3 breaking changes
+dockerImage = "prefecthq/prefect:2-latest"
+startCommand = "prefect server start --host 0.0.0.0"
+healthcheckPath = "/api/health"
+
+[[services]]
+name = "nextjs"
+buildCommand = "docker build -t pead-nextjs ./frontend"
+startCommand = "node server.js"
+healthcheckPath = "/"
+
+# ── rl_trainer: MANUAL DEPLOY ONLY ───────────────────────────────────────────
+# Auto-deploy is disabled. Deploy via Railway dashboard or:
+#   railway up --service rl_trainer
+# Reason: auto-deploy on push to main kills in-progress training jobs.
+[[services]]
+name = "rl_trainer"
+buildCommand = "docker build -t pead-rl-trainer ./backend"
+startCommand = "python -m app.rl.trainer"
+deployTrigger = "manual"
