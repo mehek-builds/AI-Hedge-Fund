@@ -1105,22 +1105,22 @@ settings = Settings()
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Tailwind v4 vs v3 for Next.js 16**
    - What we know: npm registry shows `tailwindcss@4.2.4` as latest. Next.js 16.2.4 supports Tailwind v4.
    - What's unclear: PRD specifies "Next.js 14" but research shows Next.js 16 is current. All App Router patterns are compatible. If Tailwind v3 is required for compatibility with existing shadcn/ui components, that's a different config path.
-   - Recommendation: Use Tailwind v4 with Next.js 16 unless there's a specific v3 requirement. Document the CSS-first config pattern clearly.
+   - **RESOLVED: Use Tailwind v4 CSS-first config (`@theme` in globals.css, no tailwind.config.ts). Implemented in Plan 01-01 Task 3.**
 
 2. **Prefect metadata DB: shared instance or separate service?**
    - What we know: Prefect 2.x server needs a PostgreSQL-compatible database for its own metadata. Same Railway PostgreSQL instance is possible using a separate database name (`prefect_meta`).
    - What's unclear: Connection pool contention between Prefect metadata writes and application queries.
-   - Recommendation: Use same PostgreSQL instance with separate `prefect_meta` database to minimize Railway service count and cost.
+   - **RESOLVED: Use shared PostgreSQL instance with separate `prefect_meta` database (created via infra/db/init.sql mounted as docker-entrypoint-initdb.d). Implemented in Plan 01-01 Task 1.**
 
 3. **Railway deployment: CLI-based vs `railway.toml` vs Railway GitHub App**
    - What we know: Railway supports multiple deploy methods. GitHub integration with auto-deploy is standard. RL trainer must be excluded from auto-deploy.
    - What's unclear: Current Railway `railway.toml` schema and whether per-service deploy exclusions are configurable there.
-   - Recommendation: Use Railway GitHub App for all services except RL trainer; RL trainer service connects to a separate branch or uses Railway's "manual deploy" toggle.
+   - **RESOLVED: Use `@railway/cli` npm package with `railway up --detach --service <name>` in a GitHub Actions matrix strategy. rl_trainer is explicitly omitted from the matrix. Implemented in Plan 01-03 Task 2.**
 
 ---
 
@@ -1165,7 +1165,7 @@ settings = Settings()
 | FR-1.3 | Schema migration survives Railway service restart | manual | Restart TimescaleDB container; verify tables intact | N/A (manual) |
 | FR-1.4 | CI lint passes on PR | smoke | GitHub Actions CI run | Wave 0 |
 | FR-1.4 | CI Docker build passes on PR | smoke | GitHub Actions CI run | Wave 0 |
-| FR-1.5 | `as_of` query excludes future-ingested rows | unit | `pytest backend/tests/test_schema.py::test_as_of_filtering -x` | Wave 0 |
+| FR-1.5 | `as_of` query excludes future-ingested rows | unit | `pytest backend/tests/test_as_of.py::test_future_ingested_row_excluded -x` | Wave 0 |
 | FR-1.5 | `ingestion_timestamp` column exists on all 6 tables | unit | `pytest backend/tests/test_schema.py::test_ingestion_timestamp_columns -x` | Wave 0 |
 
 ### Sampling Rate
