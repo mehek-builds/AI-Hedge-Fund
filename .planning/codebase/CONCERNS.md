@@ -42,7 +42,7 @@
    - `/Users/Mehek1/kalshi-crypto-trader/config.py` contains hardcoded API credentials:
      - Line 7: Kalshi API Key ID hardcoded as fallback
      - Line 8: Full Kalshi RSA private key embedded in source code (lines 8-34)
-     - Line 39: Anthropic API key (`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`)
+     - Line 39: Anthropic API key (redacted — rotate immediately)
    - **Impact**: Anyone with code access has credentials to trading systems and LLM API
    - **Recommendation**: Immediately rotate all exposed credentials, move to environment variables only
 
