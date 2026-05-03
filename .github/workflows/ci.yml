@@ -1,81 +1,110 @@
-name: CI/CD
+name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
+env:
+  DATABASE_URL: postgresql+asyncpg://pead:devpass@localhost:5432/pead_trading
+
 jobs:
-  test-api:
+  lint-and-test:
     runs-on: ubuntu-latest
+
     services:
-      postgres:
-        image: timescale/timescaledb:latest-pg16
+      db:
+        image: timescale/timescaledb:latest-pg15
         env:
           POSTGRES_USER: pead
-          POSTGRES_PASSWORD: pead
-          POSTGRES_DB: pead_test
-        ports: ["5432:5432"]
+          POSTGRES_PASSWORD: devpass
+          POSTGRES_DB: pead_trading
+        ports:
+          - 5432:5432
         options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
+          --health-cmd "pg_isready -U pead -d pead_trading"
+          --health-interval 10s
+          --health-timeout 5s
           --health-retries 5
+
       redis:
         image: redis:7-alpine
-        ports: ["6379:6379"]
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r api/requirements.txt
-      - run: pip install pytest pytest-asyncio httpx
-      - run: python -m pytest tests/ -v
-        env:
-          DATABASE_URL: postgresql://pead:pead@localhost:5432/pead_test
-          REDIS_URL: redis://localhost:6379/0
-          JWT_SECRET: test_secret
 
-  lint-api:
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Lint (ruff)
+        run: |
+          pip install ruff
+          ruff check backend/
+
+      - name: Run Alembic migrations
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: Run tests
+        working-directory: backend
+        run: pytest tests/ -v --tb=short
+
+  lint-frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install ruff
-      - run: ruff check . --ignore E501
 
-  lint-web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
-          cache-dependency-path: web/package-lock.json
-      - run: npm ci
-        working-directory: web
-      - run: npm run lint
-        working-directory: web
-      - run: npm run type-check
-        working-directory: web
+          cache-dependency-path: frontend/package-lock.json
 
-  deploy:
-    needs: [test-api, lint-api, lint-web]
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Type check
+        working-directory: frontend
+        run: npm run type-check
+
+  docker-build:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to Railway
-        run: |
-          curl -fsSL https://railway.app/install.sh | sh
-          railway up --service api
-          railway up --service worker
-          railway up --service web
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build FastAPI image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: false
+          tags: pead-fastapi:ci
+
+      - name: Build Next.js image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: false
+          tags: pead-nextjs:ci
+
+      # rl_trainer is excluded — manual-deploy-only (CLAUDE.md)
