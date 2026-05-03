@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     ALPACA_API_KEY: str = ""
     ALPACA_SECRET_KEY: str = ""
     ALPACA_PAPER: bool = True
+    FRED_API_KEY: str = ""
+    FMP_API_KEY: str = ""
+    DATABASE_URL_SYNC: str = "postgresql+psycopg2://pead:changeme@localhost:5432/pead_trading"
 
 
 settings = Settings()
