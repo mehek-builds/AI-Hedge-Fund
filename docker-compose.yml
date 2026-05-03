@@ -1,106 +1,94 @@
 services:
-  db:
-    image: timescale/timescaledb:latest-pg15
+  web:
+    build: ./web
+    ports:
+      - "3000:3000"
     environment:
-      POSTGRES_USER: pead
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: pead_trading
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=http://localhost:3000
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://pead:pead@db:5432/pead
+      - REDIS_URL=redis://redis:6379/0
+      - ALPACA_API_KEY=${ALPACA_API_KEY}
+      - ALPACA_SECRET_KEY=${ALPACA_SECRET_KEY}
+      - ALPACA_BASE_URL=${ALPACA_BASE_URL:-https://paper-api.alpaca.markets}
+      - FRED_API_KEY=${FRED_API_KEY}
+      - FMP_API_KEY=${FMP_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  worker:
+    build: ./worker
+    environment:
+      - DATABASE_URL=postgresql://pead:pead@db:5432/pead
+      - REDIS_URL=redis://redis:6379/0
+      - ALPACA_API_KEY=${ALPACA_API_KEY}
+      - ALPACA_SECRET_KEY=${ALPACA_SECRET_KEY}
+      - ALPACA_BASE_URL=${ALPACA_BASE_URL:-https://paper-api.alpaca.markets}
+      - FRED_API_KEY=${FRED_API_KEY}
+      - FMP_API_KEY=${FMP_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: celery -A celery_app worker --loglevel=info --concurrency=4
+    restart: unless-stopped
+
+  rl-trainer:
+    build: ./worker
+    environment:
+      - DATABASE_URL=postgresql://pead:pead@db:5432/pead
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+    command: python -m flows.rl_trainer
+    profiles: ["training"]
+    restart: "no"
+
+  db:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      - POSTGRES_USER=pead
+      - POSTGRES_PASSWORD=pead
+      - POSTGRES_DB=pead
     ports:
       - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./api/db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pead -d pead_trading"]
+      test: ["CMD-SHELL", "pg_isready -U pead -d pead"]
       interval: 5s
       timeout: 5s
-      retries: 10
-      start_period: 30s
+      retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes
-    volumes:
-      - redisdata:/data
     ports:
       - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  fastapi:
-    build: ./backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://pead:${DB_PASSWORD}@db:5432/pead_trading
-      REDIS_URL: redis://redis:6379/0
-      REDIS_BACKEND_URL: redis://redis:6379/1
-      REDIS_PUB_URL: redis://redis:6379/2
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    ports:
-      - "8000:8000"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  celery_worker:
-    build: ./backend
-    command: celery -A app.worker worker --loglevel=info --concurrency=4 --max-tasks-per-child=100
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://pead:${DB_PASSWORD}@db:5432/pead_trading
-      REDIS_URL: redis://redis:6379/0
-      REDIS_BACKEND_URL: redis://redis:6379/1
-      REDIS_PUB_URL: redis://redis:6379/2
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  prefect_server:
-    image: prefecthq/prefect:2-latest
-    command: prefect server start --host 0.0.0.0
-    environment:
-      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://pead:${DB_PASSWORD}@db:5432/prefect_meta
-      PREFECT_SERVER_API_HOST: "0.0.0.0"
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "4200:4200"
     volumes:
-      - prefectdata:/root/.prefect
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:4200/api/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-
-  nextjs:
-    build: ./frontend
-    command: npm run dev
-    env_file: .env
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
-    depends_on:
-      fastapi:
-        condition: service_healthy
-    ports:
-      - "3000:3000"
+      - redisdata:/data
+    restart: unless-stopped
 
 volumes:
   pgdata:
   redisdata:
-  prefectdata:
