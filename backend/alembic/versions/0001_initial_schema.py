@@ -13,8 +13,37 @@ branch_labels = None
 depends_on = None
 
 
+_TIMESCALEDB_AVAILABLE = False
+
+
+def _try_enable_timescaledb() -> bool:
+    """Enable TimescaleDB extension if the binary is installed on the server."""
+    global _TIMESCALEDB_AVAILABLE
+    try:
+        conn = op.get_bind()
+        available = conn.execute(
+            __import__("sqlalchemy").text(
+                "SELECT count(*) FROM pg_available_extensions WHERE name = 'timescaledb'"
+            )
+        ).scalar()
+        if available:
+            op.execute("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE")
+            _TIMESCALEDB_AVAILABLE = True
+    except Exception:
+        pass
+    return _TIMESCALEDB_AVAILABLE
+
+
+def _maybe_hypertable(table: str, time_col: str, interval: str) -> None:
+    if _TIMESCALEDB_AVAILABLE:
+        op.execute(
+            f"SELECT create_hypertable('{table}', '{time_col}', "
+            f"chunk_time_interval => INTERVAL '{interval}', if_not_exists => TRUE)"
+        )
+
+
 def upgrade() -> None:
-    op.execute("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE")
+    _try_enable_timescaledb()
 
     # ── price_bars ────────────────────────────────────────────────────────────
     op.execute(
@@ -33,10 +62,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "SELECT create_hypertable('price_bars', 'time', "
-        "chunk_time_interval => INTERVAL '1 month', if_not_exists => TRUE)"
-    )
+    _maybe_hypertable("price_bars", "time", "1 month")
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_price_bars_symbol_time "
         "ON price_bars (symbol, time DESC)"
@@ -69,10 +95,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "SELECT create_hypertable('earnings_events', 'announced_at', "
-        "chunk_time_interval => INTERVAL '3 months', if_not_exists => TRUE)"
-    )
+    _maybe_hypertable("earnings_events", "announced_at", "3 months")
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_earnings_symbol "
         "ON earnings_events (symbol, announced_at DESC)"
@@ -101,10 +124,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "SELECT create_hypertable('signals', 'created_at', "
-        "chunk_time_interval => INTERVAL '1 month', if_not_exists => TRUE)"
-    )
+    _maybe_hypertable("signals", "created_at", "1 month")
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_signals_symbol "
         "ON signals (symbol, created_at DESC)"
@@ -134,10 +154,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "SELECT create_hypertable('rl_transitions', 'ts', "
-        "chunk_time_interval => INTERVAL '1 week', if_not_exists => TRUE)"
-    )
+    _maybe_hypertable("rl_transitions", "ts", "1 week")
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_rl_agent_priority "
         "ON rl_transitions (agent_id, priority DESC)"
@@ -161,10 +178,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "SELECT create_hypertable('macro_indicators', 'date', "
-        "chunk_time_interval => INTERVAL '3 months', if_not_exists => TRUE)"
-    )
+    _maybe_hypertable("macro_indicators", "date", "3 months")
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_macro_series "
         "ON macro_indicators (series_id, date DESC)"
@@ -192,10 +206,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "SELECT create_hypertable('portfolio_positions', 'snapshot_at', "
-        "chunk_time_interval => INTERVAL '1 month', if_not_exists => TRUE)"
-    )
+    _maybe_hypertable("portfolio_positions", "snapshot_at", "1 month")
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_positions_symbol "
         "ON portfolio_positions (symbol, snapshot_at DESC)"
