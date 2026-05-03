@@ -76,10 +76,35 @@ def fetch_and_upsert_ff5(downloader: Callable[[], bytes]) -> int:
     return n
 
 
+def _run_ff5(downloader: Optional[Callable[[], bytes]] = None) -> int:
+    """Core FF5 ingestion logic — plain function, callable without Prefect runtime.
+
+    Same pattern as prices._run_ingestion: extracted so integration tests can
+    call this directly, bypassing the Prefect ephemeral server requirement.
+    """
+    try:
+        logger = get_run_logger()
+    except Exception:
+        import logging
+        logger = logging.getLogger(__name__)
+    dl = downloader if downloader is not None else _download_zip
+    data = dl()
+    rows = parse_ff5_csv(data)
+    logger.info(f"Parsed {len(rows)} FF5 daily rows")
+    if not rows:
+        return 0
+    with sync_session() as s:
+        n = upsert_rows(
+            s, FF5Factor.__table__, rows,
+            conflict_cols=["date"],
+            update_cols=["mkt_rf", "smb", "hml", "rmw", "cma", "rf"],
+        )
+    return n
+
+
 @flow(name="ingest_ff5_weekly", retries=2, retry_delay_seconds=120)
 def ingest_ff5_weekly(downloader: Optional[Callable[[], bytes]] = None) -> int:
-    dl = downloader if downloader is not None else _download_zip
-    return fetch_and_upsert_ff5(dl)
+    return _run_ff5(downloader=downloader)
 
 
 def deploy() -> None:

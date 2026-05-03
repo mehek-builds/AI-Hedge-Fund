@@ -6,8 +6,12 @@ then asserts each target table has at least one row.
 These tests require a live PostgreSQL instance with Phase 2 schema applied
 (`alembic upgrade head` inside the container). They are CI-gated per the
 pattern established in Phase 1 and plans 02-01..02-04.
+
+Inner `_run_X` helper functions are called directly to bypass the Prefect
+ephemeral server requirement — same pattern as test_flow_prices.py calling
+`_run_ingestion()` instead of `ingest_prices_daily()`.
 """
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -103,39 +107,41 @@ def _sync_engine():
 
 
 def test_all_six_flows_write_to_their_tables(monkeypatch):
-    """After running all 6 flows with mocked sources, each target table has rows."""
-    from app.flows import (
-        prices as prices_mod,
-        macro as macro_mod,
-        ff5 as ff5_mod,
-        earnings as earn_mod,
-        constituents as cons_mod,
-        derived_macro as deriv_mod,
-    )
+    """After running all 6 flows with mocked sources, each target table has rows.
 
-    # Force in-memory or test-DB universe to a tiny set including HYG/LQD
+    Calls _run_X inner helpers directly to bypass Prefect ephemeral server
+    (same pattern as test_flow_prices.py → _run_ingestion).
+    """
+    from app.flows import prices as prices_mod
+    from app.flows import macro as macro_mod
+    from app.flows import ff5 as ff5_mod
+    from app.flows import earnings as earn_mod
+    from app.flows import constituents as cons_mod
+    from app.flows import derived_macro as deriv_mod
+
+    # Force universe to a tiny set including HYG/LQD for spread computation
     monkeypatch.setattr(prices_mod, "current_sp500_universe", lambda: ["AAPL", "HYG", "LQD"])
     monkeypatch.setattr(earn_mod, "current_sp500_universe", lambda: ["AAPL"])
 
     # 1. Constituents first (so universe is real for re-runs)
-    cons_mod.sync_sp500_constituents_weekly(fetcher=lambda: _wiki_tables())
+    cons_mod._run_constituents(fetcher=lambda: _wiki_tables())
 
-    # 2. Prices
+    # 2. Prices (use _run_ingestion to bypass Prefect)
     prices_mod._run_ingestion(lookback_days=2,
                               test_client=_alpaca_client(["AAPL", "HYG", "LQD"]))
 
     # 3. Macro (FRED)
-    macro_mod.ingest_macro_daily(lookback_days=10, fred_client=_fake_fred())
+    macro_mod._run_macro(lookback_days=10, fred_client=_fake_fred())
 
     # 4. FF5
     z = _ff5_zip_bytes()
-    ff5_mod.ingest_ff5_weekly(downloader=lambda: z)
+    ff5_mod._run_ff5(downloader=lambda: z)
 
     # 5. Earnings
-    earn_mod.ingest_earnings_daily(quarters=4, http_override=_fmp_http())
+    earn_mod._run_earnings(quarters=4, http_override=_fmp_http())
 
     # 6. Derived (HYG/LQD spread) — depends on prices being present
-    n_deriv = deriv_mod.compute_hyg_lqd_daily(lookback_days=10)
+    n_deriv = deriv_mod._run_derived_macro(lookback_days=10)
     assert n_deriv >= 1, "HYG/LQD spread must produce at least one row"
 
     # Verify each table received rows
@@ -154,30 +160,32 @@ def test_all_six_flows_write_to_their_tables(monkeypatch):
 
 def test_sequence_is_idempotent(monkeypatch):
     """Running the full sequence twice does not error."""
-    from app.flows import (
-        prices as p, macro as m, ff5 as f, earnings as e,
-        constituents as c, derived_macro as d,
-    )
+    from app.flows import prices as p
+    from app.flows import macro as m
+    from app.flows import ff5 as f
+    from app.flows import earnings as e
+    from app.flows import constituents as c
+    from app.flows import derived_macro as d
+
     monkeypatch.setattr(p, "current_sp500_universe", lambda: ["AAPL", "HYG", "LQD"])
     monkeypatch.setattr(e, "current_sp500_universe", lambda: ["AAPL"])
     z = _ff5_zip_bytes()
-    wiki = lambda: _wiki_tables()
     client = _alpaca_client(["AAPL", "HYG", "LQD"])
     fred = _fake_fred()
     http = _fmp_http()
 
     for _ in range(2):
-        c.sync_sp500_constituents_weekly(fetcher=wiki)
+        c._run_constituents(fetcher=lambda: _wiki_tables())
         p._run_ingestion(lookback_days=2, test_client=client)
-        m.ingest_macro_daily(lookback_days=10, fred_client=fred)
-        f.ingest_ff5_weekly(downloader=lambda: z)
-        e.ingest_earnings_daily(quarters=4, http_override=http)
-        d.compute_hyg_lqd_daily(lookback_days=10)
+        m._run_macro(lookback_days=10, fred_client=fred)
+        f._run_ff5(downloader=lambda: z)
+        e._run_earnings(quarters=4, http_override=http)
+        d._run_derived_macro(lookback_days=10)
 
 
 def test_derived_handles_missing_prices_gracefully():
     """If HYG/LQD bars are absent (e.g. very narrow lookback), flow returns 0 not raise."""
     from app.flows import derived_macro as d
     # lookback_days=0 → cutoff = now, so PriceBar.time >= now yields no rows
-    n = d.compute_hyg_lqd_daily(lookback_days=0)
+    n = d._run_derived_macro(lookback_days=0)
     assert n == 0

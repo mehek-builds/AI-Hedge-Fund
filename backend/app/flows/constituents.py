@@ -117,9 +117,17 @@ def _build_constituent_rows(
     return rows
 
 
-@task(retries=2, retry_delay_seconds=30)
-def fetch_and_upsert_constituents(fetcher: Optional[Callable] = None) -> int:
-    logger = get_run_logger()
+def _run_constituents(fetcher: Optional[Callable] = None) -> int:
+    """Core constituent sync logic — plain function, callable without Prefect runtime.
+
+    Same pattern as prices._run_ingestion: extracted so integration tests can
+    call this directly, bypassing the Prefect ephemeral server requirement.
+    """
+    try:
+        logger = get_run_logger()
+    except Exception:
+        import logging
+        logger = logging.getLogger(__name__)
     tables = (fetcher or _fetch_tables)()
     if len(tables) < 2:
         logger.error(f"Expected >=2 tables on Wikipedia page, got {len(tables)}")
@@ -142,6 +150,11 @@ def fetch_and_upsert_constituents(fetcher: Optional[Callable] = None) -> int:
         s.execute(M.__table__.insert(), rows)
     logger.info(f"Wrote {len(rows)} constituent rows")
     return len(rows)
+
+
+@task(retries=2, retry_delay_seconds=30)
+def fetch_and_upsert_constituents(fetcher: Optional[Callable] = None) -> int:
+    return _run_constituents(fetcher=fetcher)
 
 
 @flow(name="sync_sp500_constituents_weekly", retries=2, retry_delay_seconds=120)

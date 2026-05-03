@@ -97,17 +97,50 @@ def ingest_one_symbol(symbol: str, http_get: Callable, limit: int) -> int:
     return n
 
 
-@flow(name="ingest_earnings_daily", retries=2, retry_delay_seconds=60)
-def ingest_earnings_daily(quarters: int = 8, http_override: Optional[Callable] = None) -> int:
-    """Fetch last `quarters` quarters of earnings for each S&P 500 symbol."""
-    logger = get_run_logger()
+def _run_earnings(quarters: int = 8, http_override: Optional[Callable] = None) -> int:
+    """Core earnings ingestion logic — plain function, callable without Prefect runtime.
+
+    Same pattern as prices._run_ingestion: extracted so integration tests can
+    call this directly, bypassing the Prefect ephemeral server requirement.
+    """
+    try:
+        logger = get_run_logger()
+    except Exception:
+        import logging
+        logger = logging.getLogger(__name__)
     getter = http_override if http_override is not None else _http_get
     universe = current_sp500_universe()
     total = 0
     for sym in universe:
-        total += ingest_one_symbol(sym, getter, quarters)
+        try:
+            income = getter(f"/income-statement/{sym}", {"period": "quarter", "limit": quarters})
+            surprises = getter(f"/earnings-surprises/{sym}", None)
+        except Exception as e:
+            logger.error(f"FMP fetch failed for {sym}: {e}")
+            continue
+        rows = _parse_fmp_response(income or [], surprises or [], sym)
+        if not rows:
+            continue
+        with sync_session() as s:
+            n = upsert_rows(
+                s, EarningsEvent.__table__, rows,
+                conflict_cols=["symbol", "fiscal_quarter"],
+                update_cols=[
+                    "announced_at", "eps_actual", "eps_estimate",
+                    "revenue_actual", "revenue_estimate",
+                    "operating_income", "share_count",
+                    "guidance_direction", "source",
+                ],
+            )
+            total += n
     logger.info(f"Earnings: {total} rows across {len(universe)} symbols")
     return total
+
+
+@flow(name="ingest_earnings_daily", retries=2, retry_delay_seconds=60)
+def ingest_earnings_daily(quarters: int = 8, http_override: Optional[Callable] = None) -> int:
+    """Fetch last `quarters` quarters of earnings for each S&P 500 symbol."""
+    return _run_earnings(quarters=quarters, http_override=http_override)
 
 
 def deploy() -> None:

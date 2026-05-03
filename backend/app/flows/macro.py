@@ -70,13 +70,45 @@ def fetch_one_series(series_id: str, fred, lookback_days: int) -> list[dict]:
     return rows
 
 
-@flow(name="ingest_macro_daily", retries=2, retry_delay_seconds=60)
-def ingest_macro_daily(lookback_days: int = 30, fred_client=None) -> int:
-    logger = get_run_logger()
+def _run_macro(lookback_days: int = 30, fred_client=None) -> int:
+    """Core macro ingestion logic — plain function, callable without Prefect runtime.
+
+    Same pattern as prices._run_ingestion: extracted so integration tests can
+    call this directly, bypassing the Prefect ephemeral server requirement.
+    """
+    try:
+        logger = get_run_logger()
+    except Exception:
+        import logging
+        logger = logging.getLogger(__name__)
     fred = fred_client if fred_client is not None else _build_fred()
     all_rows: list[dict] = []
     for sid in FRED_SERIES:
-        all_rows.extend(fetch_one_series(sid, fred, lookback_days))
+        # Call the FRED series fetch directly (bypasses @task Prefect wrapper)
+        start = (datetime.utcnow() - timedelta(days=lookback_days)).date().isoformat()
+        try:
+            latest = fred.get_series(sid, observation_start=start)
+        except Exception as e:
+            logger.error(f"FRED fetch failed for {sid}: {e}")
+            continue
+        try:
+            vintage = fred.get_series_first_release(sid)
+        except Exception:
+            vintage = None
+        for ts, val in latest.items():
+            if val is None or (hasattr(val, "isnan") and val.isnan()):
+                continue
+            d = ts.date() if hasattr(ts, "date") else ts
+            v_date = None
+            if vintage is not None and ts in vintage.index:
+                v_date = d
+            all_rows.append({
+                "date": d,
+                "series_id": sid,
+                "value": float(val),
+                "vintage_date": v_date if v_date is not None else d,
+                "source": "FRED",
+            })
     if not all_rows:
         logger.warning("No FRED rows fetched")
         return 0
@@ -88,6 +120,11 @@ def ingest_macro_daily(lookback_days: int = 30, fred_client=None) -> int:
         )
     logger.info(f"Upserted {n} macro rows")
     return n
+
+
+@flow(name="ingest_macro_daily", retries=2, retry_delay_seconds=60)
+def ingest_macro_daily(lookback_days: int = 30, fred_client=None) -> int:
+    return _run_macro(lookback_days=lookback_days, fred_client=fred_client)
 
 
 def deploy() -> None:
