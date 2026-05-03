@@ -12,7 +12,7 @@ The system is built in a strict dependency order: stable infrastructure before d
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Infrastructure & Data Foundation** - Docker Compose, TimescaleDB schema, Railway deployment, CI pipeline, point-in-time architecture
+- [x] **Phase 1: Infrastructure & Data Foundation** - Docker Compose, TimescaleDB schema, Railway deployment, CI pipeline, point-in-time architecture (completed 2026-05-03)
 - [ ] **Phase 2: Data Pipelines** - Prefect flows for prices, FRED macro, FF5 factors, earnings calendar, S&P 500 constituent history
 - [ ] **Phase 3: Signal Engine** - Market-implied EPS, earnings quality decomposition, three-axis composite, sector hurdles, naive baseline
 - [ ] **Phase 4: Portfolio Architecture** - Macro composite gate, ERP monitor, Mag-7 controls, completion portfolio optimizer
@@ -34,10 +34,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Railway deployment runs with a persistent volume; a schema migration survives a Railway service restart without data loss
   4. GitHub Actions CI runs lint, test, and Docker build on a PR; a merge to main triggers auto-deploy to Railway
   5. All historical records written to the DB include `ingestion_timestamp`; a test query using `as_of` filtering returns only records visible at that timestamp
-**Plans:** 3 plans
-- [ ] 01-01-PLAN.md — Docker Compose stack with 6 services, FastAPI/Next.js/Celery skeletons (FR-1.1)
-- [ ] 01-02-PLAN.md — Alembic + TimescaleDB hypertables migration with point-in-time as_of filter (FR-1.2, FR-1.5)
-- [ ] 01-03-PLAN.md — Railway deploy + GitHub Actions CI/CD with rl_trainer exclusion (FR-1.3, FR-1.4)
+**Plans:** 3/3 plans complete
+- [x] 01-01-PLAN.md — Docker Compose stack with 6 services, FastAPI/Next.js/Celery skeletons (FR-1.1)
+- [x] 01-02-PLAN.md — Alembic + TimescaleDB hypertables migration with point-in-time as_of filter (FR-1.2, FR-1.5)
+- [x] 01-03-PLAN.md — Railway deploy + GitHub Actions CI/CD with rl_trainer exclusion (FR-1.3, FR-1.4)
 
 ### Phase 2: Data Pipelines
 **Goal**: All upstream data sources flow into the database on schedule; the system has clean, point-in-time price, macro, factor, and earnings data ready for signal computation
@@ -158,7 +158,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure & Data Foundation | 0/3 | Not started | - |
+| 1. Infrastructure & Data Foundation | 3/3 | Complete | 2026-05-03 |
 | 2. Data Pipelines | 0/TBD | Not started | - |
 | 3. Signal Engine | 0/TBD | Not started | - |
 | 4. Portfolio Architecture | 0/TBD | Not started | - |
