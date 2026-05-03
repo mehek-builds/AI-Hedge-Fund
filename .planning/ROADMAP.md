@@ -85,7 +85,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Any signal producing a position > 3% NAV in a Mag-7 name is capped to 3%; the cap is logged as a constraint event
   5. Completion portfolio allocates ~23% NAV to IVE/IYR; scipy SLSQP optimizer produces weights that achieve target FF3 betas (Mkt-Rf ≈ 0.985, SMB ≈ −0.155, HML ≈ +0.025) within tolerance
   6. An 8% stop-loss hard limit is enforced independently of RL sizing recommendations; a unit test confirms stop triggers at exactly 8% drawdown from entry
-**Plans**: TBD
+**Plans:** 3 plans
+- [ ] 04-01-PLAN.md — Macro composite scorer + sizing multiplier + Mag-7 cap + ERP cap + 8% stop-loss (FR-4.1, FR-4.2, FR-4.3, FR-4.4, FR-4.6)
+- [ ] 04-02-PLAN.md — Completion portfolio SLSQP optimizer + sizing pipeline orchestrator (FR-4.5)
+- [ ] 04-03-PLAN.md — Celery task wrapper + macro_loader (DB read) + DB-gated integration tests (FR-4.1..FR-4.6)
 
 ### Phase 5: SAC Ensemble RL
 **Goal**: Five independent SAC agents are training on historical transitions, producing diverse sizing outputs that a MoE meta-controller blends by macro regime — with diversity monitoring to detect and alert on ensemble collapse
@@ -169,7 +172,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 1. Infrastructure & Data Foundation | 3/3 | Complete | 2026-05-03 |
 | 2. Data Pipelines | 0/5 | Not started | - |
 | 3. Signal Engine | 0/TBD | Not started | - |
-| 4. Portfolio Architecture | 0/TBD | Not started | - |
+| 4. Portfolio Architecture | 0/3 | Not started | - |
 | 5. SAC Ensemble RL | 0/TBD | Not started | - |
 | 6. Backtest Engine + Validation Gate | 0/TBD | Not started | - |
 | 7. Alpaca Execution + Alerting | 0/TBD | Not started | - |
