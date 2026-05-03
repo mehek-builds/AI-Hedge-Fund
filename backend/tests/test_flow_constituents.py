@@ -45,7 +45,7 @@ def test_build_rows_current_members_have_null_removed_date():
 
 def test_sync_writes_to_db(db_engine):
     from app.flows.constituents import sync_sp500_constituents_weekly
-    n = sync_sp500_constituents_weekly(_fetcher=lambda: [_current_df(), _changes_df()])
+    n = sync_sp500_constituents_weekly(fetcher=lambda: [_current_df(), _changes_df()])
     assert n > 0
 
 
