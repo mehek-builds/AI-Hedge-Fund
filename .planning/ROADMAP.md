@@ -69,7 +69,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Three-axis composite (valuation × quality × momentum) is computed and persisted to the `signals` table
   6. Naive baseline produces a fixed 2% NAV position size for any signal-aligned name; this value is stored alongside the signal and used as the IR denominator
   7. End-to-end signal computation for one earnings event completes in under 5 seconds
-**Plans**: TBD
+**Plans:** 3 plans
+- [x] 03-01-PLAN.md — Sector map + market-implied EPS + 4-component quality scorer (FR-3.1, FR-3.2)
+- [x] 03-02-PLAN.md — Momentum + composite + sector-hurdle/ROIC-WACC filters + signal writer + pipeline (FR-3.3, FR-3.4, FR-3.5, FR-3.6)
+- [x] 03-03-PLAN.md — Celery task wrapper + DB-gated integration tests + <5s performance benchmark (FR-3.7)
 
 ### Phase 4: Portfolio Architecture
 **Goal**: Every signal-driven position size is gated through macro regime controls, ERP compression caps, Mag-7 concentration limits, and a completion portfolio that neutralizes unintended factor tilts
