@@ -50,7 +50,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Ken French FF5 factor data is present in the DB and queryable by date
   5. `earnings_events` table contains FMP actuals (EPS, revenue, operating income, share count, guidance direction) for the last 2 earnings seasons
   6. S&P 500 constituent history table exists and a point-in-time query for any date between 2018-2023 returns the correct membership (survivorship bias test passes)
-**Plans**: TBD
+**Plans:** 5 plans
+- [x] 02-01-PLAN.md — Phase 2 schema migrations (sp500_constituents, ff5_factors) + shared flow base utilities (FR-2.1)
+- [x] 02-02-PLAN.md — Alpaca daily OHLCV ingestion flow for S&P 500 universe (FR-2.1, FR-2.2)
+- [x] 02-03-PLAN.md — FRED 6-series macro flow + Ken French FF5 weekly flow (FR-2.2, FR-2.3)
+- [x] 02-04-PLAN.md — FMP earnings flow + Wikipedia S&P 500 constituent history + point-in-time query (FR-2.1, FR-2.3)
+- [ ] 02-05-PLAN.md — HYG/LQD derived spread + integration test + deploy-all script + Prefect dashboard verification (FR-2.1, FR-2.2, FR-2.3)
 
 ### Phase 3: Signal Engine
 **Goal**: Given a new earnings event, the system computes a market-implied EPS signal, earnings quality score, three-axis composite, and a naive baseline position size — all within 5 seconds
@@ -159,7 +164,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Infrastructure & Data Foundation | 3/3 | Complete | 2026-05-03 |
-| 2. Data Pipelines | 0/TBD | Not started | - |
+| 2. Data Pipelines | 0/5 | Not started | - |
 | 3. Signal Engine | 0/TBD | Not started | - |
 | 4. Portfolio Architecture | 0/TBD | Not started | - |
 | 5. SAC Ensemble RL | 0/TBD | Not started | - |
