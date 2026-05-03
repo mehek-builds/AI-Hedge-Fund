@@ -13,5 +13,8 @@ web/.next/
 pgdata/
 /models/
 !backend/app/models/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
 tensorboard/
 *.zip
