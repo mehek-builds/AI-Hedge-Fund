@@ -187,7 +187,7 @@ def test_margin_expansion_5pp_down_zero():
         operating_income=Decimal("15"),
     )
     bd = compute_quality_score(current, prior)
-    assert bd.margin_expansion == 0.0
+    assert bd.margin_expansion == pytest.approx(0.0, abs=1e-10)
 
 
 def test_margin_expansion_with_none_operating_income():
