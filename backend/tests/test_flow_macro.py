@@ -30,7 +30,7 @@ def test_fred_series_count():
 def test_ingest_macro_writes_rows(db_engine):
     from app.flows.macro import ingest_macro_daily, FRED_SERIES
     fred = _fake_fred({sid: {"2026-05-01": 1.23} for sid in FRED_SERIES})
-    n = ingest_macro_daily(lookback_days=30, _fred=fred)
+    n = ingest_macro_daily(lookback_days=30, fred_client=fred)
     assert n == len(FRED_SERIES)
 
 
@@ -38,8 +38,8 @@ def test_ingest_macro_idempotent(db_engine):
     from app.flows.macro import ingest_macro_daily
     fred = _fake_fred({"DGS10": {"2026-05-01": 4.5}})
     # Run twice — second must not error
-    ingest_macro_daily(lookback_days=30, _fred=fred)
-    ingest_macro_daily(lookback_days=30, _fred=fred)
+    ingest_macro_daily(lookback_days=30, fred_client=fred)
+    ingest_macro_daily(lookback_days=30, fred_client=fred)
 
 
 def test_deploy_callable():
