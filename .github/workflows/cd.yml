@@ -13,23 +13,12 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Deploy FastAPI
-        run: railway up --service fastapi --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: Deploy Celery worker
-        run: railway up --service celery_worker --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: Deploy Prefect server
-        run: railway up --service prefect_server --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: Deploy Next.js frontend
-        run: railway up --service nextjs --detach
+      - name: Deploy all services (except rl_trainer)
+        run: |
+          railway up --service fastapi --detach
+          railway up --service celery_worker --detach
+          railway up --service prefect_server --detach
+          railway up --service nextjs --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
