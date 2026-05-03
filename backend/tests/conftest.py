@@ -43,3 +43,14 @@ async def db(db_engine):
 async def client():
     async with AsyncClient(app=app, base_url="http://test") as c:
         yield c
+
+
+@pytest_asyncio.fixture
+async def db_session(db_engine):
+    """Per-test async session for point-in-time query tests."""
+    async_session = sessionmaker(
+        db_engine, class_=AsyncSession, expire_on_commit=False
+    )
+    async with async_session() as session:
+        yield session
+        await session.rollback()
