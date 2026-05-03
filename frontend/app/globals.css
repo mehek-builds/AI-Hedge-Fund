@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #0A1628;
+  --color-brand-primary: #2471A3;
+  --color-positive: #148F77;
+  --color-negative: #C0392B;
+  --font-family-ui: "Inter", system-ui, sans-serif;
+  --font-family-mono: "JetBrains Mono", "Fira Code", monospace;
+}
+
+:root {
+  background-color: var(--color-bg-primary);
+  color: white;
+  font-family: var(--font-family-ui);
+}
