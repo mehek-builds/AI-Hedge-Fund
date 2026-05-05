@@ -4,7 +4,7 @@ HYG_LQD_SPREAD = LQD_close / HYG_close   (a credit-spread proxy used by the
 Phase 4 macro composite). We compute it daily right after price ingestion.
 """
 from __future__ import annotations
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from prefect import flow, get_run_logger
@@ -42,13 +42,13 @@ def _run_derived_macro(lookback_days: int = 7) -> int:
             return 0
         for d in common_dates:
             h = hyg[d]
-            l = lqd[d]
-            if not h or not l or Decimal(str(h)) == 0:
+            lqd_val = lqd[d]
+            if not h or not lqd_val or Decimal(str(h)) == 0:
                 continue
             rows.append({
                 "date": d,
                 "series_id": "HYG_LQD_SPREAD",
-                "value": float(Decimal(str(l)) / Decimal(str(h))),
+                "value": float(Decimal(str(lqd_val)) / Decimal(str(h))),
                 "vintage_date": d,
                 "source": "DERIVED:price_bars",
             })

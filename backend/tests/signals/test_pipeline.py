@@ -2,11 +2,9 @@
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 import uuid
 
-import pytest
 
 
 def _make_event(

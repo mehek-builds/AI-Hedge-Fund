@@ -6,9 +6,8 @@ Tests 1-10 cover the compute_position_size() function which chains:
 import logging
 from decimal import Decimal
 
-import pytest
 
-from app.portfolio.pipeline import PositionSizingResult, compute_position_size
+from app.portfolio.pipeline import compute_position_size
 
 # ---------------------------------------------------------------------------
 # Helpers

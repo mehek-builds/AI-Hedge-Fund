@@ -2,7 +2,7 @@
 from __future__ import annotations
 import io
 import zipfile
-from datetime import date, datetime
+from datetime import datetime
 from typing import Callable, Optional
 
 import requests

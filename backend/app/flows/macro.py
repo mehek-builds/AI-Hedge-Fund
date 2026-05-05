@@ -4,8 +4,7 @@ Note: HYG/LQD credit-spread inputs come from price_bars (handled by plan 02-02);
 they are *derived* from prices, not pulled from FRED, so they are NOT in this flow.
 """
 from __future__ import annotations
-from datetime import date, datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta
 
 from prefect import flow, task, get_run_logger
 from prefect.client.schemas.schedules import CronSchedule
@@ -150,7 +149,7 @@ def _attach_composite_scores(rows: list[dict], logger) -> None:
     readings in the same upsert — same ingestion_timestamp, same date.
     """
     from decimal import Decimal
-    from app.portfolio.macro import score_component, COMPONENT_NAMES
+    from app.portfolio.macro import score_component
 
     # Group values by date → {series_id: value}
     date_series: dict = {}

@@ -20,7 +20,7 @@ from typing import Optional
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.portfolio.macro import compute_macro_score, score_component, COMPONENT_NAMES
+from app.portfolio.macro import score_component, COMPONENT_NAMES
 
 # Mapping from FRED/derived series_id -> component name used by macro.py scorer.
 # Keys must match series_id values stored in macro_indicators.

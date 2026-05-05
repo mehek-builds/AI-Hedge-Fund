@@ -1,14 +1,13 @@
 """Wikipedia → sp500_constituents (current members + historical changes)."""
 from __future__ import annotations
-from datetime import date, datetime
+from datetime import date
 from typing import Callable, Optional
 
 import pandas as pd
 from prefect import flow, task, get_run_logger
 from prefect.client.schemas.schedules import CronSchedule
 
-from app.flows._base import sync_session, upsert_rows
-from app.models.sp500_constituents import SP500Constituent
+from app.flows._base import sync_session
 
 WIKI_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 

@@ -8,7 +8,6 @@ from app.portfolio.completion import (
     COMPLETION_WEIGHT,
     FF3_TARGETS,
     FF3_TOLERANCE,
-    CompletionAllocation,
     optimize_completion_weights,
 )
 

@@ -5,7 +5,6 @@ import pytest
 
 
 def test_task_is_registered():
-    from app.tasks.signals import compute_signal_task
     from app.worker import celery_app
     assert "app.tasks.signals.compute_signal_task" in celery_app.tasks
 

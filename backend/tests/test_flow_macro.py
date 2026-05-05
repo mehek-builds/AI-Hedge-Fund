@@ -1,6 +1,4 @@
 import pandas as pd
-import pytest
-from datetime import date
 from unittest.mock import MagicMock
 
 

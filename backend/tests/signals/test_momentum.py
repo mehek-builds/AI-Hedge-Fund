@@ -1,8 +1,7 @@
 """Tests for momentum.py — 20-day return and cohort percentile ranking."""
 from datetime import datetime, timezone
 from decimal import Decimal
-from types import SimpleNamespace
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 

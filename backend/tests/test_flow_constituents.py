@@ -1,6 +1,5 @@
 from datetime import date
 import pandas as pd
-import pytest
 
 
 def _current_df():

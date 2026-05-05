@@ -11,7 +11,6 @@ from sqlalchemy import text
 
 from app.flows._base import sync_session
 from app.models.earnings_events import EarningsEvent
-from app.models.price_bars import PriceBar
 from app.signals.pipeline import compute_signal_for_event
 
 
@@ -59,7 +58,7 @@ def test_end_to_end_signal_for_earnings_event():
     with sync_session() as s:
         _cleanup(s, sym)
         # Prior quarter event: weaker margin and higher share count.
-        prior_id = _insert_earnings_event(
+        _insert_earnings_event(
             s, symbol=sym, announced_at=now - timedelta(days=91),
             fiscal_quarter="2025Q4", eps_actual=Decimal("8.0"), eps_estimate=Decimal("7.5"),
             revenue_actual=Decimal("9000"), revenue_estimate=Decimal("8800"),

@@ -1,5 +1,4 @@
 import asyncio
-import json
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter

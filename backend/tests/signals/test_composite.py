@@ -1,7 +1,6 @@
 """Tests for composite.py — valuation_score, compute_composite, direction_for_composite."""
 from decimal import Decimal
 
-import pytest
 
 
 class TestValuationScore:

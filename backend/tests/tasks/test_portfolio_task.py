@@ -4,7 +4,7 @@ All DB and compute calls are mocked. Tests exercise task routing, early-exit
 paths, and the success path verifying upsert_rows is called with stop_loss_price.
 """
 from decimal import Decimal
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -15,7 +15,6 @@ import pytest
 
 
 def test_task_is_registered():
-    from app.tasks.portfolio import compute_portfolio_size_task
     from app.worker import celery_app
     assert "app.tasks.portfolio.compute_portfolio_size_task" in celery_app.tasks
 

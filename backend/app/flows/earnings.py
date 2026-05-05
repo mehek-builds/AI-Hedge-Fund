@@ -6,7 +6,7 @@ For each S&P 500 symbol:
   3. Merge by quarter end date → upsert one earnings_events row per (symbol, quarter)
 """
 from __future__ import annotations
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Callable, Optional
 
 import httpx

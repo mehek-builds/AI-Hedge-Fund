@@ -2,7 +2,6 @@
 from decimal import Decimal
 from types import SimpleNamespace
 
-import pytest
 
 
 def make_event(operating_income=None, revenue_actual=None):

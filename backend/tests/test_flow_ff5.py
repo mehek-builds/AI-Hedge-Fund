@@ -1,7 +1,6 @@
 import io
 import zipfile
 
-import pytest
 
 
 def _make_fake_zip(csv_text: str) -> bytes:

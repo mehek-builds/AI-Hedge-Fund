@@ -133,7 +133,6 @@ def test_mixed_3_present_3_missing_returns_6_keys():
 
     now = datetime.now(timezone.utc)
     present_series = ["T10Y2Y", "SAHMREALTIME", "USALOLITONOSM"]
-    missing_series = ["MANEMP", "HYG_LQD_SPREAD", "JPY_AUD_CARRY"]
 
     with sync_session() as session:
         try:

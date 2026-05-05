@@ -16,7 +16,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pandas as pd
-import pytest
 from sqlalchemy import text
 
 
@@ -24,11 +23,11 @@ from sqlalchemy import text
 
 
 class _FakeBar:
-    def __init__(self, ts, o, h, l, c, v):
+    def __init__(self, ts, o, h, low, c, v):
         self.timestamp = ts
         self.open = o
         self.high = h
-        self.low = l
+        self.low = low
         self.close = c
         self.volume = v
         self.vwap = (o + c) / 2

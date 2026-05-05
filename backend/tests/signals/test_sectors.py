@@ -1,7 +1,6 @@
 """Unit tests for the GICS sector map, forward P/E table, and hurdle rates."""
 from decimal import Decimal
 
-import pytest
 
 
 def test_sector_for_aapl_returns_tech():

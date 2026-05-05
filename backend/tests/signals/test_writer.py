@@ -7,7 +7,7 @@ import pytest
 
 
 def _make_payload(**overrides):
-    from app.signals.writer import SignalPayload, NAIVE_POSITION_SIZE
+    from app.signals.writer import SignalPayload
     defaults = dict(
         symbol="AAPL",
         earnings_event_id=42,
@@ -22,7 +22,6 @@ def _make_payload(**overrides):
 
 class TestSignalPayload:
     def test_default_naive_position_size_is_0_0200(self):
-        from app.signals.writer import SignalPayload, NAIVE_POSITION_SIZE
         p = _make_payload()
         assert p.naive_position_size == Decimal("0.0200")
 
