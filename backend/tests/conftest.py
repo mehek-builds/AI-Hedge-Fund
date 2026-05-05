@@ -1,9 +1,9 @@
 import asyncio
 import os
 
+import httpx
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -12,6 +12,13 @@ from app.main import app
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql+asyncpg://pead:devpass@localhost:5432/pead_trading",
+)
+
+_DB_AVAILABLE = bool(os.environ.get("DATABASE_URL") or os.environ.get("DATABASE_URL_SYNC"))
+
+requires_db = pytest.mark.skipif(
+    not _DB_AVAILABLE,
+    reason="DB-gated: set DATABASE_URL or DATABASE_URL_SYNC and run `alembic upgrade head` first",
 )
 
 
@@ -24,7 +31,15 @@ def event_loop():
 
 @pytest_asyncio.fixture(scope="session")
 async def db_engine():
+    if not _DB_AVAILABLE:
+        pytest.skip("DB-gated: set DATABASE_URL or DATABASE_URL_SYNC first")
     engine = create_async_engine(DATABASE_URL, echo=False)
+    try:
+        async with engine.connect():
+            pass
+    except Exception:
+        await engine.dispose()
+        pytest.skip("PostgreSQL not reachable — skipping DB-dependent tests")
     yield engine
     await engine.dispose()
 
@@ -41,7 +56,8 @@ async def db(db_engine):
 
 @pytest_asyncio.fixture
 async def client():
-    async with AsyncClient(app=app, base_url="http://test") as c:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
 
 
