@@ -102,7 +102,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. MoE meta-controller classifies the current macro state into one of 3 regimes (expansion/caution/crisis) and produces a weighted blend of the 5 agent outputs
   6. Pairwise cosine similarity between agent action distributions is computed after each training epoch; a similarity > 0.9 triggers an `rl_diversity_alert` event
   7. RL trainer Railway service requires manual deploy; checkpoints are written to PostgreSQL every 1,000 training steps
-**Plans**: TBD
+**Plans:** 6 plans
+- [ ] 05-01-PLAN.md — Wave 0 test stubs + Alembic 0004 (rl_checkpoints, rl_diversity_alerts) (FR-5.1..FR-5.7 scaffolding)
+- [ ] 05-02-PLAN.md — SAC core: BetaActor + distinct seeds/±30% perturbations + transformer 4→3 layers (FR-5.1, FR-5.3, FR-5.4)
+- [ ] 05-03-PLAN.md — DB-backed PER buffer (push_to_db + hydrate_from_db, rl/db_per.py adapter) (FR-5.2)
+- [ ] 05-04-PLAN.md — MoE redesign: blend all 5 agents via 0,1→expansion / 2,3→caution / 4→crisis projection (FR-5.5)
+- [ ] 05-05-PLAN.md — Diversity monitor + worker/flows/rl_trainer.py with 1000-step checkpoint loop (FR-5.6, FR-5.7)
+- [ ] 05-06-PLAN.md — DB-gated integration tests + deploy-gate static tests + human Phase 5 sign-off (FR-5.1..FR-5.7)
+
 
 ### Phase 6: Backtest Engine + Validation Gate
 **Goal**: A 2018–2023 point-in-time replay runs using production signal and RL code, produces full performance statistics, and either passes the Sharpe > 1.0 gate (unblocking paper trading) or fails it (blocking Phase 7)
@@ -173,7 +180,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 2. Data Pipelines | 0/5 | Not started | - |
 | 3. Signal Engine | 0/TBD | Not started | - |
 | 4. Portfolio Architecture | 0/3 | Not started | - |
-| 5. SAC Ensemble RL | 0/TBD | Not started | - |
+| 5. SAC Ensemble RL | 0/6 | Not started | - |
 | 6. Backtest Engine + Validation Gate | 0/TBD | Not started | - |
 | 7. Alpaca Execution + Alerting | 0/TBD | Not started | - |
 | 8. Frontend Dashboard | 0/TBD | Not started | - |
