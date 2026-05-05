@@ -608,22 +608,20 @@ def save_checkpoint(conn, ensemble, step: int):
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **FR-5.8 and FR-5.9 content**
-   - What we know: ROADMAP.md lists 9 requirements (FR-5.1 through FR-5.9) but only describes 7 success criteria
-   - What's unclear: What do FR-5.8 and FR-5.9 specify?
-   - Recommendation: Check REQUIREMENTS.md for exact text before planning; plan for 2 additional tasks
+All open questions resolved during Phase 5 planning revision (iteration 1). No questions block execution.
 
-2. **Transformer pre-training data availability**
-   - What we know: Phase 2 must complete before Phase 5 (data pipelines); `earnings_events` table exists with `eps_surprise`/`eps_actual` columns
-   - What's unclear: Is there sufficient earnings history (8+ quarters per ticker) in the DB for pre-training?
-   - Recommendation: Pre-training script should degrade gracefully if < 8 quarters exist (use available history, skip tickers with < 2 quarters)
+1. **FR-5.8 and FR-5.9 content** — RESOLVED: out of scope.
+   - Resolution: ROADMAP success criteria for Phase 5 cover only FR-5.1 through FR-5.7. FR-5.8/FR-5.9 are not defined in ROADMAP success criteria and are explicitly out of scope for this phase. Plans 05-01..05-06 + 05-02b cover FR-5.1..FR-5.7 only.
 
-3. **Integration point with portfolio pipeline (FR-5.3 macro multiplier)**
-   - What we know: `apply_sizing_multiplier()` exists in `backend/app/portfolio/macro.py`; SAC output is `entry_size ∈ [0,1]`
-   - What's unclear: Does the RL trainer need to call the macro multiplier at all, or only the inference path (Celery task → signal pipeline)?
-   - Recommendation: Macro multiplier is applied only at **inference time** (in the Celery signal task), not during training. Training rewards are computed on raw RL actions. This keeps training and inference consistent with FR-5.3 "does not backpropagate."
+2. **Transformer pre-training data availability** — RESOLVED: derive from earnings_events.
+   - Resolution: `eps_surprise` is DERIVED in SQL as `eps_actual - eps_estimate` (the `earnings_events` table has NO eps_surprise column — A4 in the original Assumptions Log was incorrect). Plan 05-02b's pretrain script reads (eps_actual, eps_estimate) from earnings_events and computes the surprise. If fewer than 8 quarters exist for ANY ticker, the script gracefully exits with code 2 and a clear message — does NOT block other plans, since SACEnsemble.__init__ falls back to a fresh-init encoder when the checkpoint file is absent.
+
+3. **Macro multiplier integration (FR-5.3)** — RESOLVED: post-RL at inference, never inside the autograd graph.
+   - Resolution: `apply_sizing_multiplier()` is called AFTER `SACEnsemble.select_action` returns the raw Beta sample, at inference time only (in the Celery signal task / portfolio sizing pipeline). It is NEVER called during training and NEVER inside the backward pass. This is enforced by:
+     - `test_macro_multiplier_no_grad` (Plan 05-01) — asserts the post-multiplier value is a plain Python float, not a torch tensor with grad_fn
+     - The comment block above `SACAgent.select_action` (Plan 05-02 Task 1) — documents the contract for callers
 
 ---
 
