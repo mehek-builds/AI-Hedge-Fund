@@ -14,6 +14,17 @@ from app.config import settings
 from app.flows._base import sync_session, upsert_rows
 from app.models.macro_indicators import MacroIndicator
 
+# Series IDs that map to the 6 macro composite components (FR-4.1).
+# Used after ingestion to compute and persist composite_score (gap SC-1b).
+_COMPOSITE_SERIES = {
+    "T10Y2Y":       "yield_curve",
+    "SAHMREALTIME": "sahm",
+    "USALOLITONOSM": "lei",
+    "MANEMP":       "ism_pmi",
+    "HYG_LQD_SPREAD": "hyg_lqd_spread",
+    "JPY_AUD_CARRY":  "jpy_aud_carry",
+}
+
 # Six FRED series the Phase 4 macro composite scorer needs:
 # 1. Yield curve = DGS10 - DGS2 (we store both, derive at query time)
 # 2. Sahm Rule current value
@@ -112,14 +123,66 @@ def _run_macro(lookback_days: int = 30, fred_client=None) -> int:
     if not all_rows:
         logger.warning("No FRED rows fetched")
         return 0
+
+    # Compute composite_score + score_components per date and attach to rows
+    # (gap SC-1b): the RL state builder reads the persisted score from DB so
+    # sizing decisions are replayable even if the algorithm changes later.
+    _attach_composite_scores(all_rows, logger)
+
     with sync_session() as s:
         n = upsert_rows(
             s, MacroIndicator.__table__, all_rows,
             conflict_cols=["date", "series_id"],
-            update_cols=["value", "vintage_date", "source"],
+            update_cols=["value", "vintage_date", "source", "composite_score", "score_components"],
         )
     logger.info(f"Upserted {n} macro rows")
     return n
+
+
+def _attach_composite_scores(rows: list[dict], logger) -> None:
+    """Compute composite_score + score_components per date and stamp each row.
+
+    Groups rows by date, collects values for the 6 composite series, runs the
+    scorer, then writes composite_score (int) and score_components (dict) back
+    onto every row for that date. Rows for non-composite series get NULL.
+
+    Called inline inside _run_macro so the score is co-committed with the raw
+    readings in the same upsert — same ingestion_timestamp, same date.
+    """
+    from decimal import Decimal
+    from app.portfolio.macro import score_component, COMPONENT_NAMES
+
+    # Group values by date → {series_id: value}
+    date_series: dict = {}
+    for row in rows:
+        d = row["date"]
+        if d not in date_series:
+            date_series[d] = {}
+        date_series[d][row["series_id"]] = row.get("value")
+
+    # Compute score per date
+    date_scores: dict = {}
+    for d, series_vals in date_series.items():
+        components: dict[str, int] = {}
+        for series_id, comp_name in _COMPOSITE_SERIES.items():
+            raw = series_vals.get(series_id)
+            val = Decimal(str(raw)) if raw is not None else None
+            components[comp_name] = score_component(comp_name, val)
+        # Only stamp if we have at least one of the 6 components
+        if any(sid in series_vals for sid in _COMPOSITE_SERIES):
+            composite = max(-6, min(0, sum(components.values())))
+            date_scores[d] = (composite, components)
+            logger.debug(f"macro composite {d}: {composite} {components}")
+
+    # Stamp each row — only rows whose series_id feeds the composite carry the score
+    for row in rows:
+        d = row["date"]
+        if d in date_scores and row["series_id"] in _COMPOSITE_SERIES:
+            row["composite_score"] = date_scores[d][0]
+            row["score_components"] = date_scores[d][1]
+        else:
+            row.setdefault("composite_score", None)
+            row.setdefault("score_components", None)
 
 
 @flow(name="ingest_macro_daily", retries=2, retry_delay_seconds=60)
