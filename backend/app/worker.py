@@ -20,6 +20,7 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     task_routes={
         "app.tasks.signals.*": {"queue": "signals"},
+        "app.tasks.portfolio.*": {"queue": "portfolio"},
         "app.tasks.rl.*": {"queue": "ml"},
     },
 )
