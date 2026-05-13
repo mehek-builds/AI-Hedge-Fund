@@ -312,6 +312,26 @@ class SACEnsemble:
         entries, holds = zip(*[a.select_action(aug, deterministic) for a in self.agents])
         return float(np.mean(entries)), int(round(np.mean(holds)))
 
+    def select_action_per_agent(
+        self,
+        obs: np.ndarray,
+        deterministic: bool = False,
+    ) -> list[tuple[float, int]]:
+        """Return raw per-agent (entry_size, hold_bin) tuples for MoE blending (FR-5.5).
+
+        The MoEController consumes this list (length == n_agents == 5) and produces
+        a single blended action via regime-weighted projection.
+
+        Order is stable: tuple at index i corresponds to self.agents[i], which
+        matches the fixed _AGENT_TO_REGIME_BUCKET assignment in MoEController.
+        """
+        aug = self._augment_obs(obs)
+        outputs: list[tuple[float, int]] = []
+        for agent in self.agents:
+            entry, hold = agent.select_action(aug, deterministic)
+            outputs.append((float(entry), int(hold)))
+        return outputs
+
     def push(self, transition: Transition, td_error: float | None = None) -> None:
         self.buffer.add(transition, td_error)
 
