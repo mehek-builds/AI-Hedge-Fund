@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 07-03-PLAN.md — alerting module, rate limiter, dispatcher, templates"
-last_updated: "2026-05-13T00:15:00Z"
+stopped_at: Completed 07-04-PLAN.md — wired dispatch_alert into orders router and gate alert, Phase 7 complete
+last_updated: "2026-05-13T09:03:09.826Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 9
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 28
-  completed_plans: 19
-  percent: 68
+  completed_plans: 21
+  percent: 75
 ---
 
 # Project State
@@ -54,6 +54,7 @@ Progress: [██████░░░░] 68%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 07-alpaca-execution-alerting P04 | 8 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Recent decisions affecting current work:
 - PER in PostgreSQL (not Redis): Redis memory ceiling exceeded at S&P 500 scale
 - 07-03: Fire-and-forget delivery: SendGrid/Slack calls never raise to caller (must not block trade execution)
 - 07-03: Rate-limited alerts persisted with rate_limited=True; Redis publish happens for all alerts including suppressed ones
+- [Phase 07-alpaca-execution-alerting]: Background alert task in orders router opens its own AsyncSessionLocal session, not request-scoped db
+- [Phase 07-alpaca-execution-alerting]: fire_gate_alert_v2 uses asyncio.run() with lazy imports in try/except to bridge sync Celery context to async dispatch_alert without circular imports
 
 ### Pending Todos
 
@@ -80,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-02
-Stopped at: Roadmap and state initialized; no plans created yet
+Last session: 2026-05-13T09:03:09.824Z
+Stopped at: Completed 07-04-PLAN.md — wired dispatch_alert into orders router and gate alert, Phase 7 complete
 Resume file: None
