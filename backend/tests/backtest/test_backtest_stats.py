@@ -20,7 +20,7 @@ from app.backtest.stats import (
     calmar_ratio,
     information_ratio,
     monthly_returns_breakdown,
-    compute_all_stats,
+    compute_all_stats_v1 as compute_all_stats,
 )
 
 
@@ -189,3 +189,94 @@ class TestComputeAllStats:
             start_date=date(2020, 1, 2),
         )
         assert result["ir_vs_baseline"] is None
+
+
+# ---------------------------------------------------------------------------
+# Plan 06-03 golden-number tests: new vectorized API (compute_* functions)
+# ---------------------------------------------------------------------------
+
+from app.backtest.stats import (  # noqa: E402
+    compute_sharpe,
+    compute_max_drawdown,
+    compute_ir_vs_baseline,
+    compute_calmar,
+    compute_monthly_returns,
+    compute_all_stats as compute_all_stats_v2,
+)
+
+
+def test_sharpe_golden_constant_return():
+    """Constant return series has zero std, so Sharpe must be 0.0."""
+    r = np.full(252, 0.001, dtype=np.float64)
+    assert compute_sharpe(r, 0.0) == 0.0
+
+
+def test_sharpe_golden_mixed_returns():
+    """Known seed: mean ~0.001, std ~0.01 -> annualized Sharpe in (0.5, 3.5)."""
+    rng = np.random.default_rng(seed=42)
+    r = rng.normal(loc=0.001, scale=0.01, size=252)
+    s = compute_sharpe(r, 0.0)
+    assert 0.5 < s < 3.5, f"Sharpe out of expected range: {s}"
+
+
+def test_sharpe_empty_returns_zero():
+    assert compute_sharpe(np.array([]), 0.0) == 0.0
+    assert compute_sharpe(np.array([0.01]), 0.0) == 0.0
+
+
+def test_max_drawdown_known_pattern():
+    """100 -> 110 -> ~99: drawdown ~ 10%."""
+    r = np.array([0.10, -0.10, 0.06061], dtype=np.float64)
+    mdd = compute_max_drawdown(r)
+    assert 0.09 < mdd < 0.11, f"expected ~0.10, got {mdd}"
+
+
+def test_max_drawdown_monotone_up_is_zero():
+    r = np.array([0.01, 0.02, 0.01, 0.005], dtype=np.float64)
+    assert compute_max_drawdown(r) == 0.0
+
+
+def test_ir_zero_when_strategy_equals_naive():
+    r = np.array([0.01, -0.01, 0.005], dtype=np.float64)
+    assert compute_ir_vs_baseline(r, r) == 0.0
+
+
+def test_ir_nonzero_when_strategy_beats_naive():
+    rng = np.random.default_rng(seed=7)
+    naive = rng.normal(0.0, 0.01, size=252)
+    strat = naive + 0.0005
+    ir = compute_ir_vs_baseline(strat, naive)
+    assert ir > 0.0, f"expected positive IR, got {ir}"
+
+
+def test_calmar_zero_drawdown_is_zero():
+    assert compute_calmar(0.20, 0.0) == 0.0
+
+
+def test_calmar_basic():
+    assert abs(compute_calmar(0.20, 0.10) - 2.0) < 1e-9
+
+
+def test_monthly_returns_groups_by_month():
+    d0 = date(2020, 1, 1)
+    from datetime import timedelta
+    dates = [d0 + timedelta(days=i) for i in range(60)]
+    r = np.full(60, 0.001, dtype=np.float64)
+    m = compute_monthly_returns(dates, r)
+    assert any(k.startswith("2020-01") for k in m)
+    assert any(k.startswith("2020-02") for k in m)
+    assert all(v > 0 for v in m.values())
+
+
+def test_compute_all_stats_v2_keys():
+    """compute_all_stats (v2) returns all required keys including is_partial_year."""
+    from datetime import timedelta
+    d0 = date(2020, 1, 1)
+    dates = [d0 + timedelta(days=i) for i in range(252)]
+    r = np.full(252, 0.001, dtype=np.float64)
+    rf = np.zeros(252, dtype=np.float64)
+    result = compute_all_stats_v2(dates, r, r, rf)
+    for k in ("sharpe", "max_drawdown", "ir_vs_baseline", "calmar",
+              "annualized_return", "monthly_returns", "is_partial_year"):
+        assert k in result, f"missing key: {k}"
+    assert result["is_partial_year"] is False

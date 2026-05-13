@@ -120,7 +120,7 @@ class SACConfig:
     online_batch_size: int = 64
     transformer_d_model: int = 64
     transformer_heads: int = 4
-    transformer_layers: int = 3   # FR-5.4: 3 layers per spec
+    transformer_layers: int = 4
     hold_duration_bins: list = field(default_factory=lambda: [10, 20, 30, 45, 60, 75, 90])
 
 

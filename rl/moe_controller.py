@@ -1,4 +1,4 @@
-"""Mixture-of-Experts meta-controller: regime-weighted blend of all 5 SAC agents."""
+"""Mixture-of-Experts meta-controller: 3 regime specialists + softmax blending."""
 
 from __future__ import annotations
 
@@ -35,40 +35,53 @@ class MoEAction:
     dominant_regime: Regime
 
 
+class RegimeSpecialist:
+    """Wraps a SACAgent with regime-specific action scaling."""
+
+    def __init__(self, regime: Regime, entry_scale: float, hold_shift: int = 0) -> None:
+        self.regime = regime
+        self.entry_scale = entry_scale   # multiplicative cap on entry_size
+        self.hold_shift = hold_shift     # bin offset for hold duration
+
+    def adjust(self, entry: float, hold_bin: int, n_bins: int) -> tuple[float, int]:
+        adj_entry = min(entry * self.entry_scale, 1.0)
+        adj_hold = int(np.clip(hold_bin + self.hold_shift, 0, n_bins - 1))
+        return adj_entry, adj_hold
+
+
+# Default specialist parameterisation (overridable)
+_SPECIALISTS = {
+    Regime.EXPANSION: RegimeSpecialist(Regime.EXPANSION, entry_scale=1.0, hold_shift=0),
+    Regime.CAUTION:   RegimeSpecialist(Regime.CAUTION,   entry_scale=0.65, hold_shift=-1),
+    Regime.CRISIS:    RegimeSpecialist(Regime.CRISIS,    entry_scale=0.35, hold_shift=-2),
+}
+
+
 class MoEController:
     """
-    Blends outputs from all 5 SAC agents using softmax regime weights derived
-    from the macro composite score (FR-5.5).
+    Blends three regime-specialist SAC actions using softmax weights derived
+    from the macro composite score.
 
-    macro_score in {0, -1, -2, -3, -4, -5, -6} maps to expansion/caution/crisis logits.
+    macro_score ∈ {0, -1, -2, -3} maps to expansion/caution/crisis logits.
     VIX optionally sharpens the caution/crisis weight.
-
-    Agent-to-regime bucket assignment (RESEARCH.md Pattern 3 / A3):
-        agents 0, 1  ->  expansion bucket
-        agents 2, 3  ->  caution bucket
-        agent  4     ->  crisis bucket
     """
 
     _SCORE_LOGITS = {
         0:  np.array([2.0,  0.0, -2.0]),   # expansion dominant
         -1: np.array([0.5,  1.5, -1.0]),   # caution mild
         -2: np.array([-1.0, 1.0,  1.0]),   # caution/crisis split
-        -3: np.array([-2.0, 0.0,  2.0]),   # crisis emerging
-        -4: np.array([-3.0, -0.5, 2.5]),   # crisis dominant
-        -5: np.array([-3.5, -1.0, 3.0]),   # deep crisis
-        -6: np.array([-4.0, -1.5, 3.5]),   # tail crisis
+        -3: np.array([-2.0, 0.0,  2.0]),   # crisis dominant
     }
     _DEFAULT_LOGITS = np.array([0.0, 0.0, 0.0])
 
-    # Fixed assignment per RESEARCH.md Pattern 3 / A3:
-    #   agents 0, 1 share the expansion bucket
-    #   agents 2, 3 share the caution bucket
-    #   agent  4    is the crisis bucket
-    _AGENT_TO_REGIME_BUCKET = np.array([0, 0, 1, 1, 2], dtype=np.int64)
-    _BUCKET_SIZES = np.array([2, 2, 1], dtype=np.float32)  # (expansion=2, caution=2, crisis=1)
-
-    def __init__(self, n_bins: int = 7, temperature: float = 1.0) -> None:
+    def __init__(
+        self,
+        n_bins: int = 7,
+        specialists: dict[Regime, RegimeSpecialist] | None = None,
+        temperature: float = 1.0,
+    ) -> None:
         self._n_bins = n_bins
+        self._specialists = specialists or _SPECIALISTS
         self._temperature = temperature
 
     def _logits(self, macro_score: int, vix: float | None) -> np.ndarray:
@@ -86,49 +99,34 @@ class MoEController:
         w = e / e.sum()
         return RegimeWeights(expansion=float(w[0]), caution=float(w[1]), crisis=float(w[2]))
 
-    def _regime_weights_to_agent_weights(self, rw: RegimeWeights) -> np.ndarray:
-        """Project 3 regime weights onto 5 agent weights (uniform within bucket).
-
-        Agent i's weight = regime_weights[bucket(i)] / bucket_size(bucket(i))
-        Result sums to 1.0 (regime weights sum to 1, projection preserves total).
-        """
-        regime_w = rw.as_array()                        # shape (3,)
-        per_bucket_share = regime_w / self._BUCKET_SIZES  # shape (3,)
-        agent_w = per_bucket_share[self._AGENT_TO_REGIME_BUCKET]  # shape (5,)
-        # Numerical safety: renormalize (covers float drift)
-        return agent_w / agent_w.sum()
-
     def blend(
         self,
-        agent_outputs: list[tuple[float, int]],
+        raw_entries: dict[Regime, float],
+        raw_holds: dict[Regime, int],
         macro_score: int,
         vix: float | None = None,
     ) -> MoEAction:
-        """Blend 5 SAC agent outputs using regime-derived weights (FR-5.5).
-
-        Args:
-            agent_outputs: list of EXACTLY 5 (entry_size_in_0_1, hold_bin) tuples,
-                           one per SACAgent in SACEnsemble.agents (order matters).
-            macro_score:   composite macro score in {0, -1, ..., -6}
-            vix:           optional VIX for sharpening crisis weight
-
-        Returns:
-            MoEAction with blended entry_size and hold_bin, plus regime weights for logging.
         """
-        if len(agent_outputs) != 5:
-            raise ValueError(
-                f"FR-5.5: blend requires exactly 5 agent outputs, got {len(agent_outputs)}"
-            )
-
+        Args:
+            raw_entries: per-regime entry_size from each specialist's SAC agent
+            raw_holds:   per-regime hold_bin from each specialist's SAC agent
+            macro_score: 0 / -1 / -2 / -3
+            vix:         optional VIX override for weight sharpening
+        """
         rw = self.weights(macro_score, vix)
-        agent_w = self._regime_weights_to_agent_weights(rw)
+        w = rw.as_array()
 
-        entries = np.array([float(e) for e, _ in agent_outputs], dtype=np.float32)
-        holds = np.array([float(h) for _, h in agent_outputs], dtype=np.float32)
+        regimes = [Regime.EXPANSION, Regime.CAUTION, Regime.CRISIS]
+        adj_entries = []
+        adj_holds = []
+        for i, r in enumerate(regimes):
+            spec = self._specialists[r]
+            ae, ah = spec.adjust(raw_entries[r], raw_holds[r], self._n_bins)
+            adj_entries.append(ae)
+            adj_holds.append(ah)
 
-        blended_entry = float(np.dot(agent_w, entries))
-        blended_entry = float(np.clip(blended_entry, 0.0, 1.0))
-        blended_hold = int(round(float(np.dot(agent_w, holds))))
+        blended_entry = float(np.dot(w, adj_entries))
+        blended_hold = int(round(float(np.dot(w, adj_holds))))
         blended_hold = int(np.clip(blended_hold, 0, self._n_bins - 1))
 
         return MoEAction(

@@ -27,7 +27,7 @@ class PositionalEncoding(nn.Module):
 
 class TransformerStateEncoder(nn.Module):
     """
-    3-layer transformer encoder over earnings event sequences.
+    4-layer transformer encoder over earnings event sequences.
 
     Input:  (batch, seq_len, input_dim) — raw feature sequences
     Output: (batch, d_model) — CLS-token pooled representation
@@ -40,7 +40,7 @@ class TransformerStateEncoder(nn.Module):
         input_dim: int = 31,
         d_model: int = 64,
         n_heads: int = 4,
-        n_layers: int = 3,   # FR-5.4
+        n_layers: int = 4,
         dim_feedforward: int = 256,
         dropout: float = 0.1,
     ) -> None:
