@@ -103,12 +103,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   6. Pairwise cosine similarity between agent action distributions is computed after each training epoch; a similarity > 0.9 triggers an `rl_diversity_alert` event
   7. RL trainer Railway service requires manual deploy; checkpoints are written to PostgreSQL every 1,000 training steps
 **Plans:** 6 plans
-- [ ] 05-01-PLAN.md — Wave 0 test stubs + Alembic 0004 (rl_checkpoints, rl_diversity_alerts) (FR-5.1..FR-5.7 scaffolding)
-- [ ] 05-02-PLAN.md — SAC core: BetaActor + distinct seeds/±30% perturbations + transformer 4→3 layers (FR-5.1, FR-5.3, FR-5.4)
-- [ ] 05-03-PLAN.md — DB-backed PER buffer (push_to_db + hydrate_from_db, rl/db_per.py adapter) (FR-5.2)
-- [ ] 05-04-PLAN.md — MoE redesign: blend all 5 agents via 0,1→expansion / 2,3→caution / 4→crisis projection (FR-5.5)
-- [ ] 05-05-PLAN.md — Diversity monitor + worker/flows/rl_trainer.py with 1000-step checkpoint loop (FR-5.6, FR-5.7)
-- [ ] 05-06-PLAN.md — DB-gated integration tests + deploy-gate static tests + human Phase 5 sign-off (FR-5.1..FR-5.7)
+- [x] 05-01-PLAN.md — Wave 0 test stubs + Alembic 0004 (rl_checkpoints, rl_diversity_alerts) (FR-5.1..FR-5.7 scaffolding)
+- [x] 05-02-PLAN.md — SAC core: BetaActor + distinct seeds/±30% perturbations + transformer 4→3 layers (FR-5.1, FR-5.3, FR-5.4)
+- [x] 05-03-PLAN.md — DB-backed PER buffer (push_to_db + hydrate_from_db, rl/db_per.py adapter) (FR-5.2)
+- [x] 05-04-PLAN.md — MoE redesign: blend all 5 agents via 0,1→expansion / 2,3→caution / 4→crisis projection (FR-5.5)
+- [x] 05-05-PLAN.md — Diversity monitor + worker/flows/rl_trainer.py with 1000-step checkpoint loop (FR-5.6, FR-5.7)
+- [x] 05-06-PLAN.md — DB-gated integration tests + deploy-gate static tests + human Phase 5 sign-off (FR-5.1..FR-5.7)
 
 
 ### Phase 6: Backtest Engine + Validation Gate
