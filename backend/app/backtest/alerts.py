@@ -34,7 +34,9 @@ def fire_gate_alert(
     Phase 7 startup gate check reads gate_status directly from backtest_runs.
     """
     alert_type = (
-        "backtest_gate_pass" if gate_result.gate_status == "pass" else "backtest_gate_fail"
+        "backtest_gate_pass"
+        if gate_result.gate_status == "pass"
+        else "backtest_gate_fail"
     )
     now = datetime.now(timezone.utc).isoformat()
 
@@ -87,9 +89,7 @@ def check_phase7_gate(session: Session) -> bool:
     ).fetchone()
 
     if row is None:
-        logger.error(
-            "Phase 7 gate check FAILED: no backtest_runs row found"
-        )
+        logger.error("Phase 7 gate check FAILED: no backtest_runs row found")
         return False
 
     if row[0] != "pass":

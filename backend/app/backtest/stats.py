@@ -157,9 +157,7 @@ def compute_all_stats(
         "max_drawdown": max_drawdown(daily_returns),
         "calmar": calmar_ratio(daily_returns),
         "ir_vs_baseline": (
-            information_ratio(daily_returns, naive_returns)
-            if naive_returns
-            else None
+            information_ratio(daily_returns, naive_returns) if naive_returns else None
         ),
         "monthly_returns": monthly_returns_breakdown(daily_returns, start_date),
     }

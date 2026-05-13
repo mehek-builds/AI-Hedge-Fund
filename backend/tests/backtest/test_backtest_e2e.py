@@ -48,13 +48,20 @@ class TestBacktestE2ESchema:
         inspector = inspect(sync_engine)
         cols = {c["name"] for c in inspector.get_columns("backtest_runs")}
         required = {
-            "id", "start_date", "end_date", "sharpe", "max_drawdown",
-            "ir_vs_baseline", "calmar", "monthly_returns", "gate_status",
-            "is_partial_year", "config_snapshot", "created_at",
+            "id",
+            "start_date",
+            "end_date",
+            "sharpe",
+            "max_drawdown",
+            "ir_vs_baseline",
+            "calmar",
+            "monthly_returns",
+            "gate_status",
+            "is_partial_year",
+            "config_snapshot",
+            "created_at",
         }
-        assert required <= cols, (
-            f"backtest_runs missing columns: {required - cols}"
-        )
+        assert required <= cols, f"backtest_runs missing columns: {required - cols}"
 
 
 class TestExclude2020Slice:
@@ -111,6 +118,7 @@ class TestExclude2020Slice:
             # Patch step_replay to return 0 for all dates
             with patch("app.backtest.replay.step_replay", return_value=0.001):
                 from app.backtest.runner import run_backtest
+
                 result = run_backtest(cfg)
 
         assert result["is_partial_year"] is True, (
@@ -144,6 +152,8 @@ class TestExclude2020Slice:
         # Query back the row
         with SyncSessionLocal() as session:
             fetched = session.get(BacktestRun, run_id)
-            assert fetched is not None, "BacktestRun row must be persisted and queryable"
+            assert fetched is not None, (
+                "BacktestRun row must be persisted and queryable"
+            )
             assert fetched.sharpe == pytest.approx(1.1, abs=1e-4)
             assert fetched.gate_status == "pass"

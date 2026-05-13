@@ -54,6 +54,7 @@ class TestBacktestRunsSchema:
     def test_monthly_returns_is_jsonb_type(self):
         """monthly_returns must be JSONB (not TEXT) for Phase 8 Explorer queries."""
         from sqlalchemy.dialects.postgresql import JSONB
+
         col = BacktestRun.__table__.columns["monthly_returns"]
         assert isinstance(col.type, JSONB), (
             "monthly_returns must be JSONB for Phase 8 Explorer queries"
@@ -62,13 +63,13 @@ class TestBacktestRunsSchema:
     def test_config_snapshot_is_jsonb_type(self):
         """config_snapshot must be JSONB for Phase 8 Explorer queries."""
         from sqlalchemy.dialects.postgresql import JSONB
+
         col = BacktestRun.__table__.columns["config_snapshot"]
-        assert isinstance(col.type, JSONB), (
-            "config_snapshot must be JSONB"
-        )
+        assert isinstance(col.type, JSONB), "config_snapshot must be JSONB"
 
     def test_id_is_uuid_type(self):
         """id column must be UUID type."""
         from sqlalchemy.dialects.postgresql import UUID
+
         col = BacktestRun.__table__.columns["id"]
         assert isinstance(col.type, UUID), "id must be UUID type"

@@ -129,6 +129,7 @@ class TestInformationRatio:
         # Active return is constant positive, but std=0, so IR=0
         # Add some noise to get a meaningful result
         import random
+
         random.seed(99)
         strategy = [0.002 + random.gauss(0, 0.001) for _ in range(100)]
         naive = [0.001 + random.gauss(0, 0.001) for _ in range(100)]
@@ -170,7 +171,13 @@ class TestComputeAllStats:
             start_date=date(2020, 1, 2),
             daily_rf=0.0001,
         )
-        required_keys = ["sharpe", "max_drawdown", "calmar", "ir_vs_baseline", "monthly_returns"]
+        required_keys = [
+            "sharpe",
+            "max_drawdown",
+            "calmar",
+            "ir_vs_baseline",
+            "monthly_returns",
+        ]
         for key in required_keys:
             assert key in result, f"compute_all_stats missing key: '{key}' (FR-6.3)"
 

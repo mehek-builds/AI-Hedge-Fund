@@ -83,3 +83,100 @@ class TestNoParallelSignalImplementation:
         assert "MoEController" in source or "moe_controller" in source, (
             "replay.py must use production MoEController (FR-6.2)"
         )
+
+    def test_no_compute_position_size_defined_in_backtest_modules(self):
+        """Portfolio sizing must not be re-implemented in backtest modules.
+
+        compute_position_size belongs in app.portfolio.pipeline, not backtest/.
+        """
+        for module_path in _get_all_backtest_module_paths():
+            source = _get_python_source(module_path)
+            tree = ast.parse(source)
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    assert not node.name.startswith("compute_position_size"), (
+                        f"Portfolio sizing function '{node.name}' re-implemented in "
+                        f"{module_path.name} — FR-6.2 forbids parallel portfolio logic"
+                    )
+
+    def test_no_portfolio_pipeline_logic_in_backtest_modules(self):
+        """No portfolio pipeline functions should be redefined in backtest modules.
+
+        Functions like apply_erp_cap, apply_mag7_cap, apply_stop_loss belong in
+        app.portfolio.pipeline, not in any backtest module.
+        """
+        portfolio_pipeline_funcs = {
+            "apply_erp_cap",
+            "apply_mag7_cap",
+            "apply_stop_loss",
+            "size_position",
+        }
+        for module_path in _get_all_backtest_module_paths():
+            source = _get_python_source(module_path)
+            tree = ast.parse(source)
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    assert node.name not in portfolio_pipeline_funcs, (
+                        f"Portfolio logic '{node.name}' re-implemented in "
+                        f"{module_path.name} — FR-6.2 forbids parallel portfolio logic"
+                    )
+
+    def test_single_definition_of_compute_signal_for_event(self):
+        """compute_signal_for_event must have exactly one definition in the codebase.
+
+        The production definition lives in app/signals/pipeline.py. Verifies
+        no duplicate appears elsewhere in app/ (backtest or otherwise).
+        """
+        app_root = _BACKEND_ROOT / "app"
+        definitions = []
+        for py_file in app_root.rglob("*.py"):
+            source = _get_python_source(py_file)
+            tree = ast.parse(source)
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    if node.name == "compute_signal_for_event":
+                        definitions.append(str(py_file.relative_to(_BACKEND_ROOT)))
+        assert len(definitions) == 1, (
+            f"Expected exactly 1 definition of compute_signal_for_event, "
+            f"found {len(definitions)}: {definitions}. "
+            "FR-6.2: backtest must import from production, not redefine."
+        )
+
+    def test_replay_imports_fills_not_reimplemented(self):
+        """replay.py must import fills from app.backtest.fills, not redefine fill logic.
+
+        Simulated fill arithmetic must not be re-implemented inline in replay.py.
+        """
+        replay_path = _BACKTEST_PKG / "replay.py"
+        source = _get_python_source(replay_path)
+        # Must import simulate_fill from fills module
+        assert "simulate_fill" in source, (
+            "replay.py must import simulate_fill from app.backtest.fills (FR-6.2)"
+        )
+        # Must not define its own fill calculation function
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                assert (
+                    not node.name.startswith("simulate_fill")
+                    and node.name != "fill_order"
+                ), (
+                    f"Fill logic '{node.name}' defined inline in replay.py — "
+                    "import from app.backtest.fills instead (FR-6.2)"
+                )
+
+    def test_no_select_action_defined_in_backtest_modules(self):
+        """SAC select_action must not be re-implemented in backtest modules.
+
+        Action selection belongs in rl.sac_agent.SACEnsemble.select_action_per_agent,
+        not in any backtest module.
+        """
+        for module_path in _get_all_backtest_module_paths():
+            source = _get_python_source(module_path)
+            tree = ast.parse(source)
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    assert not node.name.startswith("select_action"), (
+                        f"SAC select_action re-implemented in backtest module "
+                        f"{module_path.name} — FR-6.2 forbids parallel RL logic"
+                    )

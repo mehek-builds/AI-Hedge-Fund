@@ -56,7 +56,9 @@ class TestPointInTimeFilter:
             "SQL query must include ingestion_timestamp filter (FR-6.1)"
         )
 
-    def test_get_close_as_of_returns_valid_price_for_existing_row(self, mock_sync_session):
+    def test_get_close_as_of_returns_valid_price_for_existing_row(
+        self, mock_sync_session
+    ):
         """Existing row with ingestion_timestamp <= as_of should be returned."""
         as_of = datetime(2021, 1, 15, 0, 0, 0, tzinfo=timezone.utc)
         mock_sync_session.execute.return_value.fetchone.return_value = (142.50,)
@@ -70,7 +72,10 @@ class TestPointInTimeFilter:
         from app.backtest.runner import sp500_members_as_of
 
         as_of = date(2019, 1, 2)
-        mock_sync_session.execute.return_value.fetchall.return_value = [("AAPL",), ("MSFT",)]
+        mock_sync_session.execute.return_value.fetchall.return_value = [
+            ("AAPL",),
+            ("MSFT",),
+        ]
 
         result = sp500_members_as_of(mock_sync_session, as_of)
 

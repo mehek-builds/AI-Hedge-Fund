@@ -19,9 +19,7 @@ from sqlalchemy.orm import Session
 
 # Add repo root to sys.path so rl.* imports work.
 # replay.py lives at backend/app/backtest/replay.py, so 3 levels up is repo root.
-_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..")
-)
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 

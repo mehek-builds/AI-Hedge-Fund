@@ -81,9 +81,7 @@ def run_backtest(config: BacktestConfig) -> dict:
     # Remove excluded range for stress-slice runs (FR-6.5)
     if config.exclude_start and config.exclude_end:
         dates = [
-            d
-            for d in dates
-            if not (config.exclude_start <= d <= config.exclude_end)
+            d for d in dates if not (config.exclude_start <= d <= config.exclude_end)
         ]
         is_partial = True
     else:
@@ -120,7 +118,9 @@ def run_backtest(config: BacktestConfig) -> dict:
     }
     if config.exclude_start:
         config_snap["exclude_start"] = config.exclude_start.isoformat()
-        config_snap["exclude_end"] = config.exclude_end.isoformat() if config.exclude_end else None
+        config_snap["exclude_end"] = (
+            config.exclude_end.isoformat() if config.exclude_end else None
+        )
 
     return {
         "start_date": config.start_date,

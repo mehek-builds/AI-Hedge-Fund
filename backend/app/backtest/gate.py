@@ -61,9 +61,7 @@ def evaluate_gate(
         )
 
     if is_partial_year:
-        logger.info(
-            "Partial-year slice: gate not evaluated (Sharpe=%.3f)", full_sharpe
-        )
+        logger.info("Partial-year slice: gate not evaluated (Sharpe=%.3f)", full_sharpe)
         return GateResult(
             gate_status="pending",
             reason="partial_year: gate not applied to partial-year slices",
@@ -73,9 +71,7 @@ def evaluate_gate(
 
     # Condition 1: full-period Sharpe > 1.0
     if full_sharpe <= SHARPE_THRESHOLD:
-        reason = (
-            f"full_period_sharpe={full_sharpe:.3f} <= threshold={SHARPE_THRESHOLD}"
-        )
+        reason = f"full_period_sharpe={full_sharpe:.3f} <= threshold={SHARPE_THRESHOLD}"
         logger.warning("Gate FAIL: %s", reason)
         return GateResult(
             gate_status="fail",
@@ -97,13 +93,10 @@ def evaluate_gate(
             ex2020_sharpe=ex2020_sharpe,
         )
 
-    reason = (
-        f"full_sharpe={full_sharpe:.3f} > {SHARPE_THRESHOLD}"
-        + (
-            f", ex2020_sharpe={ex2020_sharpe:.3f} > {EX2020_SHARPE_THRESHOLD}"
-            if ex2020_sharpe is not None
-            else ""
-        )
+    reason = f"full_sharpe={full_sharpe:.3f} > {SHARPE_THRESHOLD}" + (
+        f", ex2020_sharpe={ex2020_sharpe:.3f} > {EX2020_SHARPE_THRESHOLD}"
+        if ex2020_sharpe is not None
+        else ""
     )
     logger.info("Gate PASS: %s", reason)
     return GateResult(
