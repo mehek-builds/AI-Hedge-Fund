@@ -125,3 +125,88 @@ class TestFireGateAlert:
         call_args = session.execute.call_args
         params = call_args[0][1] if len(call_args[0]) > 1 else call_args[1]
         assert params.get("gate_status") == "fail"
+
+
+# ---------------------------------------------------------------------------
+# Plan 06-03 gate tests: new dict-based API
+# ---------------------------------------------------------------------------
+
+from app.backtest.gate import (  # noqa: E402
+    MAIN_SHARPE_THRESHOLD,
+    EX2020_SHARPE_THRESHOLD,
+    evaluate_gate_v2,
+)
+from app.backtest.alerts import (  # noqa: E402
+    EVENT_TYPE_PASS,
+    EVENT_TYPE_FAIL,
+    fire_gate_alert_v2,
+)
+
+
+def _run(sharpe: float, is_partial_year: bool = False) -> dict:
+    return {"sharpe": sharpe, "is_partial_year": is_partial_year}
+
+
+def test_gate_conjunctive_pass():
+    r = evaluate_gate_v2(_run(1.5), _run(0.9))
+    assert r["gate_status"] == "pass", r
+
+
+def test_gate_fails_when_main_below_threshold():
+    r = evaluate_gate_v2(_run(0.99), _run(1.0))
+    assert r["gate_status"] == "fail"
+    assert "main slice" in r["gate_reason"]
+
+
+def test_gate_fails_when_ex2020_below_threshold():
+    """Critical case from CONTEXT.md: main passes but ex-2020 fails -> overall fail."""
+    r = evaluate_gate_v2(_run(1.5), _run(0.79))
+    assert r["gate_status"] == "fail"
+    assert "ex-2020" in r["gate_reason"]
+
+
+def test_gate_fails_when_both_below_threshold():
+    r = evaluate_gate_v2(_run(0.5), _run(0.5))
+    assert r["gate_status"] == "fail"
+    assert "main slice" in r["gate_reason"] and "ex-2020" in r["gate_reason"]
+
+
+def test_gate_pending_on_partial_year():
+    r = evaluate_gate_v2(_run(1.5, is_partial_year=True), _run(0.9))
+    assert r["gate_status"] == "pending"
+
+
+def test_gate_override_forces_pass():
+    """Even with a genuine fail, override=True returns pass."""
+    r = evaluate_gate_v2(_run(0.5), _run(0.5), override=True)
+    assert r["gate_status"] == "pass"
+    assert "override" in r["gate_reason"]
+
+
+def test_gate_thresholds_are_exact():
+    """Boundary: exactly at threshold passes (>= comparison)."""
+    r = evaluate_gate_v2(_run(MAIN_SHARPE_THRESHOLD), _run(EX2020_SHARPE_THRESHOLD))
+    assert r["gate_status"] == "pass"
+
+
+def test_fire_gate_alert_v2_pass_event_type():
+    e = fire_gate_alert_v2("pass", "all good", run_id="abc-123")
+    assert e["event_type"] == EVENT_TYPE_PASS
+    assert e["run_id"] == "abc-123"
+    assert e["reason"] == "all good"
+
+
+def test_fire_gate_alert_v2_fail_event_type():
+    e = fire_gate_alert_v2("fail", "main slice failed", run_id=None)
+    assert e["event_type"] == EVENT_TYPE_FAIL
+    assert e["run_id"] is None
+
+
+def test_ex2020_slice():
+    """FR-6.5: ex-2020 slice is reported as separate run; gate evaluates both."""
+    main = _run(1.2)
+    ex2020 = _run(0.85)
+    r = evaluate_gate_v2(main, ex2020)
+    assert r["gate_status"] == "pass"
+    assert "1.2" in r["gate_reason"] or "1.200" in r["gate_reason"]
+    assert "0.85" in r["gate_reason"] or "0.8500" in r["gate_reason"]

@@ -17,9 +17,12 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Gate thresholds
+# Gate thresholds (legacy names kept for backward compat)
 SHARPE_THRESHOLD = 1.0
 EX2020_SHARPE_THRESHOLD = 0.8
+
+# Plan 06-03 names (conjunctive gate: main >= 1.0 AND ex-2020 >= 0.8)
+MAIN_SHARPE_THRESHOLD = 1.0
 
 
 @dataclass
@@ -105,3 +108,58 @@ def evaluate_gate(
         full_sharpe=full_sharpe,
         ex2020_sharpe=ex2020_sharpe,
     )
+
+
+# ---------------------------------------------------------------------------
+# Plan 06-03 dict-based API
+# Conjunctive: main_run["sharpe"] >= MAIN_SHARPE_THRESHOLD
+#          AND ex2020_run["sharpe"] >= EX2020_SHARPE_THRESHOLD
+# ---------------------------------------------------------------------------
+
+
+def evaluate_gate_v2(
+    main_run: dict,
+    ex2020_run: dict,
+    override: bool = False,
+) -> dict:
+    """Return {"gate_status": "pass"|"fail"|"pending", "gate_reason": str}.
+
+    Conjunctive logic: main_pass AND ex2020_pass (FR-6.4, FR-6.5).
+    Partial-year main slice forces "pending" (gate not evaluated).
+    override=True forces "pass" with explicit reason.
+    Uses >= comparison (boundary values pass).
+    """
+    if main_run.get("is_partial_year"):
+        return {
+            "gate_status": "pending",
+            "gate_reason": "main slice is partial year; gate skipped",
+        }
+    if override:
+        logger.warning("backtest gate manually overridden via override=True")
+        return {
+            "gate_status": "pass",
+            "gate_reason": "manual override via BACKTEST_OVERRIDE_GATE_PASS",
+        }
+
+    main_sharpe = float(main_run["sharpe"])
+    ex2020_sharpe = float(ex2020_run["sharpe"])
+    main_pass = main_sharpe >= MAIN_SHARPE_THRESHOLD
+    ex2020_pass = ex2020_sharpe >= EX2020_SHARPE_THRESHOLD
+    gate_pass = main_pass and ex2020_pass
+
+    if gate_pass:
+        return {
+            "gate_status": "pass",
+            "gate_reason": (
+                f"main Sharpe {main_sharpe:.4f} >= {MAIN_SHARPE_THRESHOLD}; "
+                f"ex-2020 Sharpe {ex2020_sharpe:.4f} >= {EX2020_SHARPE_THRESHOLD}"
+            ),
+        }
+    failed = []
+    if not main_pass:
+        failed.append(f"main slice Sharpe {main_sharpe:.4f} < {MAIN_SHARPE_THRESHOLD}")
+    if not ex2020_pass:
+        failed.append(
+            f"ex-2020 slice Sharpe {ex2020_sharpe:.4f} < {EX2020_SHARPE_THRESHOLD}"
+        )
+    return {"gate_status": "fail", "gate_reason": "; ".join(failed)}

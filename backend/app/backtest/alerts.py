@@ -100,3 +100,33 @@ def check_phase7_gate(session: Session) -> bool:
 
     logger.info("Phase 7 gate check PASSED: gate_status = 'pass'")
     return True
+
+
+# ---------------------------------------------------------------------------
+# Plan 06-03 stub interface for Phase 7 to wire to SendGrid+Slack
+# ---------------------------------------------------------------------------
+
+EVENT_TYPE_PASS = "backtest_gate_pass"
+EVENT_TYPE_FAIL = "backtest_gate_fail"
+EVENT_TYPE_PENDING = "backtest_gate_pending"
+
+
+def fire_gate_alert_v2(gate_status: str, gate_reason: str, run_id) -> dict:
+    """Return a structured alert event dict. Stub for now; Phase 7 wires this to SendGrid+Slack.
+
+    gate_status: 'pass' | 'fail' | 'pending'
+    Returns: {"event_type": str, "run_id": str|None, "reason": str}
+    """
+    if gate_status == "pass":
+        event_type = EVENT_TYPE_PASS
+    elif gate_status == "fail":
+        event_type = EVENT_TYPE_FAIL
+    else:
+        event_type = EVENT_TYPE_PENDING
+    event = {
+        "event_type": event_type,
+        "run_id": str(run_id) if run_id is not None else None,
+        "reason": gate_reason,
+    }
+    logger.info("BACKTEST GATE EVENT: %s", event)
+    return event
