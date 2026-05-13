@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     ENABLE_SHORT_SIDE: bool = True
     STOP_LOSS_PCT: float = 0.05
     TAKE_PROFIT_PCT: float = 0.15
+    MAX_ALERTS_PER_HOUR: int = 10
 
 
 settings = Settings()

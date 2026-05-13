@@ -77,6 +77,21 @@ export interface SettingsPatch {
   TAKE_PROFIT_PCT?: number;
 }
 
+// Plan 08-04: extended settings with runtime alert threshold
+export interface SettingsData {
+  ENABLE_SHORT_SIDE: boolean;
+  STOP_LOSS_PCT: number;
+  TAKE_PROFIT_PCT: number;
+  max_alerts_per_hour: number;
+}
+
+export interface SettingsDataPatch {
+  ENABLE_SHORT_SIDE?: boolean;
+  STOP_LOSS_PCT?: number;
+  TAKE_PROFIT_PCT?: number;
+  max_alerts_per_hour?: number;
+}
+
 export interface MacroIndicator {
   date: string | null;
   series_id: string;
@@ -93,6 +108,23 @@ export interface MacroGateStatus {
 export interface MacroData {
   indicators: MacroIndicator[];
   gate_status: MacroGateStatus;
+}
+
+// Plan 08-04: enriched macro types for Macro Monitor view
+export interface MacroIndicatorValue {
+  series_id: string;
+  value: number;
+  date: string;
+  vintage_date: string;
+  signal: "RISK_ON" | "NEUTRAL" | "RISK_OFF";
+}
+
+export interface MacroDataEnriched {
+  indicators: MacroIndicatorValue[];
+  composite_score: number;
+  gate_status: "OPEN" | "GATED";
+  sizing_multiplier: number;
+  as_of: string;
 }
 
 export interface RLAgent {
