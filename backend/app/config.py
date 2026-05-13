@@ -16,5 +16,10 @@ class Settings(BaseSettings):
     FMP_API_KEY: str = ""
     DATABASE_URL_SYNC: str = "postgresql+psycopg2://pead:changeme@localhost:5432/pead_trading"
 
+    # Runtime-adjustable trading flags (can be patched via /api/v1/settings)
+    ENABLE_SHORT_SIDE: bool = True
+    STOP_LOSS_PCT: float = 0.05
+    TAKE_PROFIT_PCT: float = 0.15
+
 
 settings = Settings()
