@@ -129,4 +129,24 @@ def fire_gate_alert_v2(gate_status: str, gate_reason: str, run_id) -> dict:
         "reason": gate_reason,
     }
     logger.info("BACKTEST GATE EVENT: %s", event)
+
+    # Phase 7: wire to real SendGrid+Slack delivery.
+    # Called from sync Celery context (backtest runner); use asyncio.run().
+    # Fire-and-forget: failure is logged, not raised.
+    try:
+        import asyncio as _asyncio
+        import redis as _redis
+        from app.alerting.dispatcher import dispatch_alert as _dispatch
+        from app.config import settings as _settings
+        from app.database import AsyncSessionLocal
+
+        async def _deliver():
+            r = _redis.from_url(_settings.REDIS_PUB_URL, decode_responses=True)
+            async with AsyncSessionLocal() as async_session:
+                await _dispatch(event["event_type"], event, async_session, r)
+
+        _asyncio.run(_deliver())
+    except Exception as _exc:
+        logger.error("fire_gate_alert_v2 delivery failed (non-fatal): %s", _exc)
+
     return event
