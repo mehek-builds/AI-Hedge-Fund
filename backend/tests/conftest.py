@@ -7,6 +7,10 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+# Skip the Phase 7 gate check during tests so the FastAPI lifespan
+# does not attempt a DB query for backtest_runs.
+os.environ.setdefault("SKIP_GATE_CHECK", "1")
+
 from app.main import app
 
 DATABASE_URL = os.environ.get(

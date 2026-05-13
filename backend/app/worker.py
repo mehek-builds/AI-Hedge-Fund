@@ -22,5 +22,12 @@ celery_app.conf.update(
         "app.tasks.signals.*": {"queue": "signals"},
         "app.tasks.portfolio.*": {"queue": "portfolio"},
         "app.tasks.rl.*": {"queue": "ml"},
+        "app.tasks.execution.*": {"queue": "portfolio"},  # execution shares portfolio queue
+    },
+    beat_schedule={
+        "sync-positions-every-15min": {
+            "task": "app.tasks.execution.sync_positions_task",
+            "schedule": 900.0,  # 15 minutes
+        },
     },
 )
