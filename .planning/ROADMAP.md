@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Portfolio Architecture** (completed 2026-05-03) - Macro composite gate, ERP monitor, Mag-7 controls, completion portfolio optimizer
 - [ ] **Phase 5: SAC Ensemble RL** - 5-agent SAC with PER, MoE meta-controller, Transformer encoder, diversity monitoring
 - [ ] **Phase 6: Backtest Engine + Validation Gate** - 2018-2023 point-in-time replay, full stats, Sharpe > 1.0 go/no-go gate
-- [ ] **Phase 7: Alpaca Execution + Alerting** - Bracket orders, position sync, orphan detection, SendGrid+Slack alerts, 9 event types
+- [x] **Phase 7: Alpaca Execution + Alerting** - Bracket orders, position sync, orphan detection, SendGrid+Slack alerts, 9 event types (completed 2026-05-13)
 - [ ] **Phase 8: Frontend Dashboard** - Next.js 14 dark dashboard, SSE real-time, all 8 views
 - [ ] **Phase 9: Hardening + Deploy** - End-to-end integration tests, Railway production config, performance validation, NFR verification
 
@@ -136,7 +136,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Rate limiting prevents more than 3 alerts per event type per hour; a burst of 10 same-type events in 5 minutes results in exactly 3 deliveries
   6. All alerts are persisted to PostgreSQL and visible in the dashboard Alerting view
   7. Short-side feature flag (`ENABLE_SHORT_SIDE`) exists in config and defaults to false; short orders are not placed when flag is off
-**Plans**: TBD
+**Plans:** 4/4 plans complete
+- [x] 07-01-PLAN.md — Alembic 0007_alerts migration, Alert ORM model, Settings extensions, sendgrid dependency, Wave 0 test stubs
+- [x] 07-02-PLAN.md — execution/ module (broker, position_sync, orphan_detector), POST /api/v1/orders router, Celery beat task, startup gate check
+- [x] 07-03-PLAN.md — alerting/ module (dispatcher, rate_limiter, templates), all alerting tests
+- [x] 07-04-PLAN.md — Wire dispatch_alert into orders router and gate alert, E2E integration checkpoint
 **UI hint**: yes
 
 ### Phase 8: Frontend Dashboard
@@ -152,7 +156,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   6. RL Console shows per-agent reward curves and current MoE regime weights (reflecting live macro state)
   7. Backtest Explorer lets the user select a backtest run and view Sharpe/drawdown/IR stats alongside monthly returns heatmap
   8. Settings view exposes feature flags (short-side toggle), alert thresholds, and sizing parameters; changes persist and take effect without service restart
-**Plans**: TBD
+**Plans:** 4/4 plans executed
+- [x] 08-01-PLAN.md — Backend REST endpoints (9 new routes) + SSE prefix fix + frontend infrastructure (types, SSEContext, useSSE, shared components, AppShell) (FR-9.1, FR-9.2)
+- [x] 08-02-PLAN.md — Dashboard, Signal Feed, Position Manager views (FR-9.1, FR-9.3, FR-9.4)
+- [x] 08-03-PLAN.md — RL Console, Backtest Explorer, Alerting views (FR-9.1, FR-9.4)
+- [x] 08-04-PLAN.md — Settings, Macro Monitor views + integration smoke test checkpoint (FR-9.1, FR-9.4)
 **UI hint**: yes
 
 ### Phase 9: Hardening + Deploy
@@ -182,6 +190,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 4. Portfolio Architecture | 0/3 | Not started | - |
 | 5. SAC Ensemble RL | 0/6 | Not started | - |
 | 6. Backtest Engine + Validation Gate | 0/TBD | Not started | - |
-| 7. Alpaca Execution + Alerting | 0/TBD | Not started | - |
-| 8. Frontend Dashboard | 0/TBD | Not started | - |
+| 7. Alpaca Execution + Alerting | 4/4 | Complete   | 2026-05-13 |
+| 8. Frontend Dashboard | 2/4 | In Progress|  |
 | 9. Hardening + Deploy | 0/TBD | Not started | - |

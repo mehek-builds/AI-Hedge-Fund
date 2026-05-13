@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 @theme {
   --color-bg-primary: #0A1628;
@@ -10,7 +11,24 @@
 }
 
 :root {
-  background-color: var(--color-bg-primary);
+  --color-bg: #0A1628;
+  --color-surface: #0F2040;
+  --color-accent: #2471A3;
+  --color-muted: #6B8EAD;
+  --color-positive: #27AE60;
+  --color-warning: #E67E22;
+  --color-danger: #E74C3C;
+
+  background-color: var(--color-bg);
   color: white;
   font-family: var(--font-family-ui);
+}
+
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
