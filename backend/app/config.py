@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     FRED_API_KEY: str = ""
     FMP_API_KEY: str = ""
     DATABASE_URL_SYNC: str = "postgresql+psycopg2://pead:changeme@localhost:5432/pead_trading"
+    # Phase 6 backtest gate override (use only with explicit human review — see runbook)
+    BACKTEST_OVERRIDE_GATE_PASS: bool = False
 
 
 settings = Settings()

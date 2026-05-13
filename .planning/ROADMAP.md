@@ -122,11 +122,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Go/no-go gate is enforced programmatically: a `backtest_gate_pass` or `backtest_gate_fail` alert fires, and Phase 7 execution cannot proceed if gate fails
   5. Ex-2020 stress test runs as a separate backtest slice; Sharpe > 0.8 on the ex-2020 period is reported
   6. Backtest results are accessible in the `backtest_runs` table and visible in the dashboard Backtest Explorer view
-**Plans:** 4 plans
-- [x] 06-01-PLAN.md — Backtest harness skeleton + Alembic 0005 backtest_runs + FR-6.1 future-row injection test (FR-6.1, FR-6.6)
-- [x] 06-02-PLAN.md — Production-code reuse wiring (replay.py) + FR-6.2 import-graph assertion (FR-6.2)
-- [ ] 06-03-PLAN.md — Stats (Sharpe/MDD/IR/Calmar/monthly) + conjunctive gate + alerts stub (FR-6.3, FR-6.4, FR-6.5)
-- [ ] 06-04-PLAN.md — Full replay CLI + E2E smoke test + operator runbook (FR-6.5, FR-6.6)
+**Plans**: TBD
 
 ### Phase 7: Alpaca Execution + Alerting
 **Goal**: Paper trades execute via bracket orders, positions stay in sync with Alpaca state, orphaned orders are detected and cancelled, and all system events are delivered via SendGrid and Slack with rate limiting

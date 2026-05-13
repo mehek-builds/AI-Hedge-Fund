@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, Date, Numeric, Text, func
+from sqlalchemy import Boolean, CheckConstraint, Date, Integer, Numeric, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,6 +15,9 @@ class BacktestRun(Base):
 
     FR-6.4: gate_status is the go/no-go pivot for Phase 7 startup.
     FR-6.6: columns match Phase 8 Backtest Explorer query needs.
+
+    The primary key column is named 'id' in the DB; the Python attribute
+    `run_id` is an alias provided for convenience in application code.
     """
 
     __tablename__ = "backtest_runs"
@@ -33,6 +36,9 @@ class BacktestRun(Base):
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
 
+    # Slice type: 'main' or 'ex_2020' (FR-6.5)
+    slice_type: Mapped[str] = mapped_column(Text, nullable=False, server_default="main")
+
     # Performance statistics (FR-6.3)
     sharpe: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6), nullable=True)
     max_drawdown: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6), nullable=True)
@@ -42,11 +48,20 @@ class BacktestRun(Base):
 
     # Gate outcome: FR-6.4
     gate_status: Mapped[str] = mapped_column(Text, nullable=False, server_default="pending")
+    gate_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Flag for ex-2020 stress slice (FR-6.5)
     is_partial_year: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
+    # Number of non-None replay_step results (trade events processed)
+    total_trades: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # Config snapshot for reproducibility and Phase 8 Explorer display
     config_snapshot: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+
+    @property
+    def run_id(self) -> str:
+        """Alias for `id` — used in application code for clarity."""
+        return self.id

@@ -67,6 +67,146 @@ def _get_portfolio_nav(session: Session, as_of: datetime) -> float:
     return 1_000_000.0  # default starting NAV
 
 
+def load_active_events_as_of(session: Session, as_of: datetime) -> list:
+    """Return earnings event ORM rows (or plain objects) visible as of as_of.
+
+    Point-in-time: filters ingestion_timestamp <= as_of so events ingested after
+    the as_of date are not visible to the replay (FR-6.1).
+
+    Returns a list of objects; each object is passed to replay_step as the `event`
+    argument. Uses the EarningsEvent ORM when available, falls back to row tuples.
+    """
+    try:
+        from app.models.earnings_events import EarningsEvent
+
+        rows = session.execute(
+            text(
+                """
+                SELECT id, symbol, announced_at, eps_actual, eps_estimate
+                FROM earnings_events
+                WHERE announced_at::date = :as_of_date
+                  AND ingestion_timestamp <= :as_of
+                ORDER BY id
+                """
+            ),
+            {"as_of_date": as_of.date(), "as_of": as_of},
+        ).fetchall()
+        # Return lightweight namedtuple-like objects so replay_step can access .id
+        from collections import namedtuple
+
+        _EE = namedtuple("_EE", ["id", "symbol", "announced_at", "eps_actual", "eps_estimate"])
+        return [_EE(*r) for r in rows]
+    except Exception as exc:
+        logger.warning("load_active_events_as_of failed for %s: %s", as_of.date(), exc)
+        return []
+
+
+def load_active_ensemble(session: Session):
+    """Load the latest SACEnsemble and MoEController from the DB.
+
+    Returns (ensemble, moe) tuple. Raises on failure so the caller can
+    decide whether to abort or fall back.
+    """
+    from rl.sac_agent import SACEnsemble
+    from rl.moe_controller import MoEController
+
+    ensemble = SACEnsemble.load_latest_from_db(session)
+    moe = MoEController()
+    return ensemble, moe
+
+
+def replay_step(session: Session, ensemble, moe, as_of: datetime, event) -> Optional[dict]:
+    """Execute the backtest replay for a single earnings event at as_of.
+
+    Calls production signal engine, macro loader, and SAC ensemble.
+    Returns a dict with keys:
+        signal_id, signal_row (Signal ORM), macro_score, macro_components,
+        blended_entry_size, final_entry_size, as_of
+    or None if the event cannot be processed (no signal, no price, etc.).
+
+    FR-6.2: no signal logic is re-implemented here.
+    """
+    from app.signals.pipeline import compute_signal_for_event
+    from app.portfolio.macro_loader import load_macro_snapshot
+    from app.backtest.fills import get_close_as_of, simulate_fill
+
+    event_id = event.id if hasattr(event, "id") else event[0]
+
+    signal_id = compute_signal_for_event(session, event_id)
+    if signal_id is None:
+        return None
+
+    # Load signal ORM row
+    from sqlalchemy.orm import Session as _Session
+    from sqlalchemy import text as _text
+
+    signal_row = session.execute(
+        _text(
+            """
+            SELECT s.signal_id, s.symbol, s.direction, s.eps_gap,
+                   s.quality_score, s.three_axis_composite, s.naive_position_size,
+                   s.ingestion_timestamp, s.created_at
+            FROM signals s
+            WHERE s.signal_id = :signal_id
+            LIMIT 1
+            """
+        ),
+        {"signal_id": signal_id},
+    ).fetchone()
+    if signal_row is None:
+        return None
+
+    # Build a lightweight object with the Signal ORM field names
+    from collections import namedtuple
+
+    _SR = namedtuple(
+        "_SignalRow",
+        ["signal_id", "symbol", "direction", "eps_gap",
+         "quality_score", "three_axis_composite", "naive_position_size",
+         "ingestion_timestamp", "created_at"],
+    )
+    signal_obj = _SR(*signal_row)
+
+    symbol = signal_obj.symbol
+    direction = signal_obj.direction
+    naive_size = float(signal_obj.naive_position_size or 0.02)
+
+    # Get portfolio NAV for fill sizing
+    nav = _get_portfolio_nav(session, as_of)
+
+    # Get close price (point-in-time)
+    close = get_close_as_of(session, symbol, as_of)
+    if close is None:
+        return None
+
+    # Macro score for MoE blending
+    macro_score, macro_components = load_macro_snapshot(session, as_of=as_of)
+
+    # Build observation vector for SAC ensemble (same as step_replay)
+    direction_sign = 1.0 if direction == "long" else -1.0
+    obs_vec = [close / 1000.0, macro_score / 10.0, naive_size, direction_sign]
+
+    try:
+        per_agent = ensemble.select_action_per_agent(obs_vec, deterministic=True)
+        moe_action = moe.blend(per_agent, macro_score=macro_score)
+        final_entry_size = float(moe_action.entry_size)
+        blended_entry_size = final_entry_size
+    except Exception as exc:
+        logger.warning("SAC ensemble action failed for %s: %s", symbol, exc)
+        final_entry_size = naive_size
+        blended_entry_size = naive_size
+
+    return {
+        "signal_id": signal_id,
+        "signal_row": signal_obj,
+        "macro_score": macro_score,
+        "macro_components": macro_components,
+        "blended_entry_size": blended_entry_size,
+        "final_entry_size": final_entry_size,
+        "as_of": as_of,
+    }
+
+
 def step_replay(session: Session, as_of: datetime) -> Optional[float]:
     """Execute one day of the backtest replay loop.
 
