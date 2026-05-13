@@ -2,16 +2,24 @@
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional
+from torch.distributions import Beta
 
 from rl.per_buffer import PERBuffer, Transition
 from rl.transformer_encoder import TransformerStateEncoder
 from config import SACConfig
+
+
+BASE_SEEDS: list[int] = [42, 137, 271, 314, 999]
+PERTURB_KEYS: tuple[str, ...] = ("lr", "gamma", "tau")
+PERTURB_RANGE: float = 0.30  # +-30% per FR-5.1
 
 
 # ── Network building blocks ──────────────────────────────────────────────────
@@ -26,35 +34,44 @@ def _mlp(in_dim: int, hidden: list[int], out_dim: int, activation: type = nn.ReL
     return nn.Sequential(*layers)
 
 
-class ContinuousActor(nn.Module):
-    """Gaussian policy: outputs mean + log_std for entry_size ∈ (0,1]."""
+class BetaActor(nn.Module):
+    """Beta policy: outputs alpha, beta > 0 -- samples in (0,1) for entry_size."""
 
-    LOG_STD_MIN = -5
-    LOG_STD_MAX = 2
+    LOG_AB_MIN = -5.0
+    LOG_AB_MAX = 2.0
+    PARAM_FLOOR = 1e-3
 
     def __init__(self, obs_dim: int, hidden: list[int] = [256, 256]) -> None:
         super().__init__()
         self.net = _mlp(obs_dim, hidden[:-1], hidden[-1])
-        self.mu_head = nn.Linear(hidden[-1], 1)
-        self.log_std_head = nn.Linear(hidden[-1], 1)
+        self.alpha_head = nn.Linear(hidden[-1], 1)
+        self.beta_head = nn.Linear(hidden[-1], 1)
 
     def forward(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         h = F.relu(self.net(obs))
-        mu = self.mu_head(h)
-        log_std = self.log_std_head(h).clamp(self.LOG_STD_MIN, self.LOG_STD_MAX)
-        return mu, log_std
+        log_alpha = self.alpha_head(h).clamp(self.LOG_AB_MIN, self.LOG_AB_MAX)
+        log_beta = self.beta_head(h).clamp(self.LOG_AB_MIN, self.LOG_AB_MAX)
+        alpha = log_alpha.exp() + self.PARAM_FLOOR
+        beta = log_beta.exp() + self.PARAM_FLOOR
+        return alpha, beta
 
     def sample(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        mu, log_std = self(obs)
-        std = log_std.exp()
-        eps = torch.randn_like(mu)
-        raw = mu + eps * std
-        action = torch.sigmoid(raw)             # squash to (0,1)
-        log_prob = (
-            torch.distributions.Normal(mu, std).log_prob(raw)
-            - torch.log(action * (1 - action) + 1e-6)
-        ).sum(-1, keepdim=True)
+        alpha, beta = self(obs)
+        dist = Beta(alpha, beta)
+        action = dist.rsample()
+        # Numerical safety: clip to (eps, 1-eps) to avoid log(0) downstream
+        action = action.clamp(1e-6, 1.0 - 1e-6)
+        log_prob = dist.log_prob(action).sum(-1, keepdim=True)
         return action, log_prob
+
+    def entropy(self, obs: torch.Tensor) -> torch.Tensor:
+        alpha, beta = self(obs)
+        return Beta(alpha, beta).entropy()
+
+    def deterministic(self, obs: torch.Tensor) -> torch.Tensor:
+        """Mean of Beta(alpha, beta) = alpha / (alpha + beta) -- used when deterministic=True."""
+        alpha, beta = self(obs)
+        return alpha / (alpha + beta)
 
 
 class DiscreteActor(nn.Module):
@@ -118,7 +135,7 @@ class SACAgent:
         self.device = torch.device(device)
         hidden = [256, 256]
 
-        self.cont_actor = ContinuousActor(obs_dim, hidden).to(self.device)
+        self.cont_actor = BetaActor(obs_dim, hidden).to(self.device)
         self.disc_actor = DiscreteActor(obs_dim, n_bins=len(cfg.hold_duration_bins), hidden=hidden).to(self.device)
 
         # Twin critics receive obs + [entry_size, hold_bin_onehot] concatenated
@@ -147,12 +164,16 @@ class SACAgent:
         hold_oh = F.one_hot(hold.long(), num_classes=n_bins).float()
         return torch.cat([entry, hold_oh], dim=-1)
 
+    # Note: macro multiplier is NOT applied here. Per FR-5.3 it is applied
+    # post-RL as a deterministic float multiplication in the calling code:
+    #   raw_size, hold = ensemble.select_action(obs)
+    #   final_size = raw_size * apply_sizing_multiplier(macro_score)
+    # This keeps the multiplier outside the autograd graph (no backprop).
     def select_action(self, obs: np.ndarray, deterministic: bool = False) -> tuple[float, int]:
         obs_t = torch.tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(0)
         with torch.no_grad():
             if deterministic:
-                mu, _ = self.cont_actor(obs_t)
-                entry = torch.sigmoid(mu)
+                entry = self.cont_actor.deterministic(obs_t)
                 hold_logits = self.disc_actor(obs_t)
                 hold = hold_logits.argmax(-1)
             else:
@@ -223,6 +244,18 @@ class SACAgent:
         )
 
 
+def _perturb_cfg(base_cfg: SACConfig, seed: int) -> SACConfig:
+    """Per-agent +-30% perturbation on lr/gamma/tau. FR-5.1."""
+    rng = np.random.default_rng(seed)
+    cfg_dict = dataclasses.asdict(base_cfg)
+    for key in PERTURB_KEYS:
+        factor = 1.0 + float(rng.uniform(-PERTURB_RANGE, PERTURB_RANGE))
+        cfg_dict[key] = cfg_dict[key] * factor
+    # gamma must stay < 1.0 strictly
+    cfg_dict["gamma"] = min(cfg_dict["gamma"], 0.9999)
+    return SACConfig(**cfg_dict)
+
+
 # ── Ensemble ─────────────────────────────────────────────────────────────────
 
 class SACEnsemble:
@@ -244,7 +277,19 @@ class SACEnsemble:
         enc_out = cfg.transformer_d_model if encoder is not None else 0
         agent_obs_dim = obs_dim + enc_out
 
-        self.agents = [SACAgent(agent_obs_dim, cfg, device) for _ in range(cfg.n_agents)]
+        if cfg.n_agents != len(BASE_SEEDS):
+            raise ValueError(
+                f"FR-5.1: SACConfig.n_agents must be {len(BASE_SEEDS)} "
+                f"(got {cfg.n_agents}). Update BASE_SEEDS to match."
+            )
+        self.agents: list[SACAgent] = []
+        for seed in BASE_SEEDS:
+            torch.manual_seed(seed)
+            np.random.seed(seed)
+            agent_cfg = _perturb_cfg(cfg, seed)
+            self.agents.append(SACAgent(agent_obs_dim, agent_cfg, device))
+        # Reset global RNG state so caller is unaffected by per-agent seeding
+        torch.manual_seed(int(np.random.default_rng().integers(2**31)))
         self.buffer = PERBuffer(
             maxlen=cfg.per_buffer_size,
             alpha=cfg.per_alpha,
