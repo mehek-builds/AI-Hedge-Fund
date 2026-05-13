@@ -136,9 +136,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Rate limiting prevents more than 3 alerts per event type per hour; a burst of 10 same-type events in 5 minutes results in exactly 3 deliveries
   6. All alerts are persisted to PostgreSQL and visible in the dashboard Alerting view
   7. Short-side feature flag (`ENABLE_SHORT_SIDE`) exists in config and defaults to false; short orders are not placed when flag is off
-**Plans:** 4 plans
-- [ ] 07-01-PLAN.md — Alembic 0007_alerts migration, Alert ORM model, Settings extensions, sendgrid dependency, Wave 0 test stubs
-- [ ] 07-02-PLAN.md — execution/ module (broker, position_sync, orphan_detector), POST /api/v1/orders router, Celery beat task, startup gate check
+**Plans:** 2/4 plans executed
+- [x] 07-01-PLAN.md — Alembic 0007_alerts migration, Alert ORM model, Settings extensions, sendgrid dependency, Wave 0 test stubs
+- [x] 07-02-PLAN.md — execution/ module (broker, position_sync, orphan_detector), POST /api/v1/orders router, Celery beat task, startup gate check
 - [ ] 07-03-PLAN.md — alerting/ module (dispatcher, rate_limiter, templates), all alerting tests
 - [ ] 07-04-PLAN.md — Wire dispatch_alert into orders router and gate alert, E2E integration checkpoint
 **UI hint**: yes
@@ -186,6 +186,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 4. Portfolio Architecture | 0/3 | Not started | - |
 | 5. SAC Ensemble RL | 0/6 | Not started | - |
 | 6. Backtest Engine + Validation Gate | 0/TBD | Not started | - |
-| 7. Alpaca Execution + Alerting | 0/4 | Not started | - |
+| 7. Alpaca Execution + Alerting | 2/4 | In Progress|  |
 | 8. Frontend Dashboard | 0/TBD | Not started | - |
 | 9. Hardening + Deploy | 0/TBD | Not started | - |
