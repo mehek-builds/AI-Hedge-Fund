@@ -62,7 +62,7 @@ def sharpe_ratio(
     r = np.array(daily_returns, dtype=float)
     excess = r - daily_rf
     std = excess.std(ddof=1)
-    if std == 0.0:
+    if std < 1e-10:
         return 0.0
     return float(excess.mean() / std * np.sqrt(_TRADING_DAYS))
 
