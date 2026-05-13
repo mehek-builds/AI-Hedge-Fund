@@ -114,4 +114,12 @@ None. All implemented functionality is fully wired.
 
 None. No new network endpoints, auth paths, file access, or schema changes introduced by this plan.
 
-## Self-Check
+## Self-Check: PASSED
+
+- rl/sac_agent.py: FOUND
+- rl/transformer_encoder.py: FOUND
+- config.py: FOUND
+- backend/tests/rl/test_sac_agent.py: FOUND
+- backend/tests/rl/test_transformer_encoder.py: FOUND
+- 05-02-SUMMARY.md: FOUND
+- Commits bfc99e4a, 72783dee, e8d1f2d0: all present in git log
