@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 07-02-PLAN.md — execution module, orders router, position sync, gate check"
-last_updated: "2026-05-13T08:52:00Z"
+stopped_at: "Completed 07-03-PLAN.md — alerting module, rate limiter, dispatcher, templates"
+last_updated: "2026-05-13T00:15:00Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 28
-  completed_plans: 18
-  percent: 64
+  completed_plans: 19
+  percent: 68
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 7
-Plan: 02 complete (2/4)
+Plan: 03 complete (3/4)
 Status: Executing
 Last activity: 2026-05-13
 
-Progress: [████░░░░░░] 64%
+Progress: [██████░░░░] 68%
 
 ## Performance Metrics
 
@@ -65,6 +65,8 @@ Recent decisions affecting current work:
 - Railway.app over AWS/GCP: simpler ops, ~$30/mo, auto-deploy (see PROJECT.md)
 - Transformer encoder frozen in v1.0: reduces training complexity, unfreeze in v2.0
 - PER in PostgreSQL (not Redis): Redis memory ceiling exceeded at S&P 500 scale
+- 07-03: Fire-and-forget delivery: SendGrid/Slack calls never raise to caller (must not block trade execution)
+- 07-03: Rate-limited alerts persisted with rate_limited=True; Redis publish happens for all alerts including suppressed ones
 
 ### Pending Todos
 
