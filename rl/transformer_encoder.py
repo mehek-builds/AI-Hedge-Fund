@@ -40,7 +40,7 @@ class TransformerStateEncoder(nn.Module):
         input_dim: int = 31,
         d_model: int = 64,
         n_heads: int = 4,
-        n_layers: int = 4,
+        n_layers: int = 3,
         dim_feedforward: int = 256,
         dropout: float = 0.1,
     ) -> None:

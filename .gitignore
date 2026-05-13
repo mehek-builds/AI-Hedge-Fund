@@ -9,3 +9,5 @@ web/node_modules/
 web/.next/
 .gstack/
 graphify-out/
+# RL training artifacts (local only, not deployed)
+rl/weights/*.pt
