@@ -173,10 +173,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Dashboard SSE latency (event to UI update) is under 500ms measured under normal operating load
   4. RL trainer is confirmed on manual-deploy-only; it cannot be triggered by a push to main
   5. Railway persistent volume survives a forced service restart with all schema and data intact
-**Plans:** 3 plans
-- [ ] 09-01-PLAN.md — E2E integration test: full pipeline cycle (earnings event to alert + Redis publish) (NFR-1)
-- [ ] 09-02-PLAN.md — Performance tests: signal computation < 5s + SSE latency < 500ms hard assertions (NFR-2, NFR-3)
-- [ ] 09-03-PLAN.md — Deploy gate test: rl_trainer excluded from auto-deploy + ops runbook (NFR-4, NFR-5)
+**Plans**: TBD
 
 ## Progress
 
@@ -195,4 +192,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Backtest Engine + Validation Gate | 0/TBD | Not started | - |
 | 7. Alpaca Execution + Alerting | 4/4 | Complete   | 2026-05-13 |
 | 8. Frontend Dashboard | 2/4 | In Progress|  |
-| 9. Hardening + Deploy | 0/3 | Not started | - |
+| 9. Hardening + Deploy | 0/TBD | Not started | - |
