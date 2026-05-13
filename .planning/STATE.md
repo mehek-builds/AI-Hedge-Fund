@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-04-PLAN.md — wired dispatch_alert into orders router and gate alert, Phase 7 complete
-last_updated: "2026-05-13T09:15:00.000Z"
+stopped_at: Completed 08-02-PLAN.md — Dashboard, Signal Feed, Position Manager views
+last_updated: "2026-05-13T17:25:25.873Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 9
-  completed_phases: 7
-  total_plans: 28
-  completed_plans: 22
-  percent: 79
+  completed_phases: 6
+  total_plans: 32
+  completed_plans: 23
+  percent: 72
 ---
 
 # Project State
@@ -55,6 +55,7 @@ Progress: [███████░░░] 79%
 
 *Updated after each plan completion*
 | Phase 07-alpaca-execution-alerting P04 | 8 | 1 tasks | 2 files |
+| Phase 08 P02 | 20 | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,8 @@ Recent decisions affecting current work:
 - 07-03: Rate-limited alerts persisted with rate_limited=True; Redis publish happens for all alerts including suppressed ones
 - [Phase 07-alpaca-execution-alerting]: Background alert task in orders router opens its own AsyncSessionLocal session, not request-scoped db
 - [Phase 07-alpaca-execution-alerting]: fire_gate_alert_v2 uses asyncio.run() with lazy imports in try/except to bridge sync Celery context to async dispatch_alert without circular imports
+- [Phase 08]: Adapted Dashboard KPI grid to actual /api/v1/dashboard shape (position_count, total_unrealized_pnl, macro_gate_open) since plan spec used projected field names that differed from 08-01 implementation
+- [Phase 08]: Extended Position interface with unrealized_pnl_pct and thesis_status fields to support Position Manager table columns
 
 ### Pending Todos
 
@@ -83,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-13T09:03:09.824Z
-Stopped at: Completed 07-04-PLAN.md — wired dispatch_alert into orders router and gate alert, Phase 7 complete
+Last session: 2026-05-13T17:25:25.870Z
+Stopped at: Completed 08-02-PLAN.md — Dashboard, Signal Feed, Position Manager views
 Resume file: None
