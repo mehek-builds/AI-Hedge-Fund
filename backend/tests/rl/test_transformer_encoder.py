@@ -1,10 +1,4 @@
-"""Wave 0 stubs -- FR-5.4 (Transformer config)."""
-import os
-import sys
-
-# Add repo root to path so `rl` and `config` packages are importable from backend/
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-
+"""Wave 0 stubs — FR-5.4 (Transformer config)."""
 import pytest
 from rl.transformer_encoder import TransformerStateEncoder
 from config import SACConfig

@@ -1,10 +1,4 @@
-"""Wave 0 stubs -- FR-5.1 (distinct init) and FR-5.3 (Beta actor)."""
-import os
-import sys
-
-# Add repo root to path so `rl` and `config` packages are importable from backend/
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-
+"""Wave 0 stubs — FR-5.1 (distinct init) and FR-5.3 (Beta actor)."""
 import pytest
 import torch
 import numpy as np
