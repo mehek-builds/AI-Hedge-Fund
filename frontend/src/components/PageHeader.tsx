@@ -7,11 +7,17 @@ interface PageHeaderProps {
 
 export default function PageHeader({ title, subtitle }: PageHeaderProps) {
   return (
-    <div style={{ marginBottom: "32px" }}>
+    <div
+      style={{
+        borderBottom: "1px solid #1A3050",
+        padding: "24px 32px",
+        marginBottom: "0",
+      }}
+    >
       <h1
         style={{
-          fontSize: "24px",
-          fontWeight: 700,
+          fontSize: "20px",
+          fontWeight: 600,
           color: "white",
           margin: 0,
           lineHeight: 1.2,
@@ -22,10 +28,9 @@ export default function PageHeader({ title, subtitle }: PageHeaderProps) {
       {subtitle && (
         <p
           style={{
-            fontSize: "14px",
+            fontSize: "13px",
             color: "var(--color-muted)",
-            marginTop: "4px",
-            marginBottom: 0,
+            margin: "4px 0 0",
           }}
         >
           {subtitle}

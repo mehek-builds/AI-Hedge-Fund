@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 08-02-PLAN.md — Dashboard, Signal Feed, Position Manager views
-last_updated: "2026-05-13T17:25:25.873Z"
+stopped_at: Completed 08-03-PLAN.md — RL Console + Backtest Explorer + Alerting views
+last_updated: "2026-05-13T17:26:08.120Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 9
@@ -55,7 +55,7 @@ Progress: [███████░░░] 79%
 
 *Updated after each plan completion*
 | Phase 07-alpaca-execution-alerting P04 | 8 | 1 tasks | 2 files |
-| Phase 08 P02 | 20 | 2 tasks | 12 files |
+| Phase 08 P03 | 30 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -71,8 +71,9 @@ Recent decisions affecting current work:
 - 07-03: Rate-limited alerts persisted with rate_limited=True; Redis publish happens for all alerts including suppressed ones
 - [Phase 07-alpaca-execution-alerting]: Background alert task in orders router opens its own AsyncSessionLocal session, not request-scoped db
 - [Phase 07-alpaca-execution-alerting]: fire_gate_alert_v2 uses asyncio.run() with lazy imports in try/except to bridge sync Celery context to async dispatch_alert without circular imports
-- [Phase 08]: Adapted Dashboard KPI grid to actual /api/v1/dashboard shape (position_count, total_unrealized_pnl, macro_gate_open) since plan spec used projected field names that differed from 08-01 implementation
-- [Phase 08]: Extended Position interface with unrealized_pnl_pct and thesis_status fields to support Position Manager table columns
+- [Phase 08]: MonthlyReturnsHeatmap uses CSS Grid only — no recharts import
+- [Phase 08]: fetcher.ts strips /api prefix for direct FastAPI server-side calls
+- [Phase 08]: api.ts extended with richer 08-03 types without removing existing 08-01 types
 
 ### Pending Todos
 
@@ -86,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-13T17:25:25.870Z
-Stopped at: Completed 08-02-PLAN.md — Dashboard, Signal Feed, Position Manager views
+Last session: 2026-05-13T17:26:08.118Z
+Stopped at: Completed 08-03-PLAN.md — RL Console + Backtest Explorer + Alerting views
 Resume file: None

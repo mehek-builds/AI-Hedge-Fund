@@ -158,8 +158,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   8. Settings view exposes feature flags (short-side toggle), alert thresholds, and sizing parameters; changes persist and take effect without service restart
 **Plans:** 2/4 plans executed
 - [x] 08-01-PLAN.md — Backend REST endpoints (9 new routes) + SSE prefix fix + frontend infrastructure (types, SSEContext, useSSE, shared components, AppShell) (FR-9.1, FR-9.2)
+<<<<<<< HEAD
 - [x] 08-02-PLAN.md — Dashboard, Signal Feed, Position Manager views (FR-9.1, FR-9.3, FR-9.4)
 - [ ] 08-03-PLAN.md — RL Console, Backtest Explorer, Alerting views (FR-9.1, FR-9.4)
+=======
+- [ ] 08-02-PLAN.md — Dashboard, Signal Feed, Position Manager views (FR-9.1, FR-9.3, FR-9.4)
+- [x] 08-03-PLAN.md — RL Console, Backtest Explorer, Alerting views (FR-9.1, FR-9.4)
+>>>>>>> worktree-agent-ad96f6528068cddc6
 - [ ] 08-04-PLAN.md — Settings, Macro Monitor views + integration smoke test checkpoint (FR-9.1, FR-9.4)
 **UI hint**: yes
 

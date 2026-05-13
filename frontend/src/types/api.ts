@@ -142,3 +142,95 @@ export interface SSERLStatePayload {
   agents: RLAgent[];
   regime_weights: Record<string, number>;
 }
+
+// ---------------------------------------------------------------------------
+// Plan 08-03 extended types
+// ---------------------------------------------------------------------------
+
+export interface AgentRewardSeries {
+  agent_id: number;
+  reward_history: { step: number; reward: number }[];
+  latest_reward: number;
+}
+
+export interface RLStateData {
+  agents: AgentRewardSeries[];
+  regime_weights: {
+    expansion: number;
+    caution: number;
+    crisis: number;
+  };
+  last_checkpoint_step: number;
+  last_updated: string;
+}
+
+export interface SSERLStateUpdatePayload {
+  event: "rl_state_update";
+  agent_id: number;
+  step: number;
+  reward: number;
+  regime_weights: {
+    expansion: number;
+    caution: number;
+    crisis: number;
+  };
+  checkpoint_step: number;
+}
+
+/** Rich backtest run with monthly returns and config snapshot */
+export interface BacktestRunDetail {
+  id: string;
+  start_date: string;
+  end_date: string;
+  slice_type: string;
+  sharpe: number | null;
+  max_drawdown: number | null;
+  ir_vs_baseline: number | null;
+  calmar: number | null;
+  monthly_returns: Record<string, number> | null;
+  gate_status: string;
+  gate_reason: string | null;
+  total_trades: number | null;
+  config_snapshot: Record<string, unknown> | null;
+  created_at: string;
+}
+
+/** Lightweight summary for the run selector list */
+export interface BacktestRunSummary {
+  id: string;
+  start_date: string;
+  end_date: string;
+  slice_type: string;
+  gate_status: string;
+  sharpe: number | null;
+  created_at: string;
+}
+
+/** Paginated alerts response (new schema) */
+export interface AlertItem {
+  id: string;
+  event_type: string;
+  payload: Record<string, unknown> | null;
+  created_at: string;
+  delivered_sendgrid: boolean;
+  delivered_slack: boolean;
+  rate_limited: boolean;
+}
+
+export interface AlertsPage {
+  items: AlertItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface SSEAlertDispatchedPayload {
+  event: "alert_dispatched";
+  id: string;
+  event_type: string;
+  payload: Record<string, unknown> | null;
+  created_at: string;
+  delivered_sendgrid: boolean;
+  delivered_slack: boolean;
+  rate_limited: boolean;
+}
