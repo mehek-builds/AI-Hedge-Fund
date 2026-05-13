@@ -89,6 +89,7 @@ class PERBuffer:
         beta_anneal_steps: int = 10_000,
         eps: float = 1e-6,
         decay_lambda: float = 0.001,
+        engine=None,  # Optional SQLAlchemy engine for DB-backed PER (FR-5.2)
     ) -> None:
         self._tree = SumTree(maxlen)
         self._alpha = alpha
@@ -100,6 +101,7 @@ class PERBuffer:
         self._step = 0
         self._max_priority = 1.0
         self._timestamps: deque[int] = deque(maxlen=maxlen)
+        self._engine = engine  # Optional SQLAlchemy engine for DB-backed PER (FR-5.2)
 
     @property
     def beta(self) -> float:
@@ -152,6 +154,27 @@ class PERBuffer:
             indices=np.array(indices, dtype=np.int64),
             weights=weights,
         )
+
+    def hydrate_from_db(self, agent_id: int = 0, limit: int = 50_000) -> int:
+        """Load top-priority transitions from DB into SumTree on startup (FR-5.2).
+
+        Returns number of transitions loaded. No-op stub when engine is None
+        or DB is unavailable -- full implementation coordinated with Plan 03.
+        """
+        if self._engine is None:
+            return 0
+        try:
+            from rl.db_per import fetch_top_priority
+            rows = fetch_top_priority(self._engine, agent_id=agent_id, limit=limit)
+            for row in rows:
+                self.add(row, td_error=None)
+            return len(rows)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(
+                "hydrate_from_db failed (DB unavailable?): %s", exc
+            )
+            return 0
 
     def update_priorities(self, indices: np.ndarray, td_errors: np.ndarray) -> None:
         for idx, td_err in zip(indices, td_errors):
