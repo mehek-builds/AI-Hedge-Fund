@@ -34,5 +34,5 @@ healthcheckPath = "/"
 [[services]]
 name = "rl_trainer"
 buildCommand = "docker build -t pead-rl-trainer ./backend"
-startCommand = "python -m app.rl.trainer"
+startCommand = "python -m worker.flows.rl_trainer"
 deployTrigger = "manual"

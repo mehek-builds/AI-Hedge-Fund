@@ -5,7 +5,10 @@ from __future__ import annotations
 import numpy as np
 from collections import deque
 from dataclasses import dataclass
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, Optional
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Engine
 
 
 class Transition(NamedTuple):
@@ -89,6 +92,7 @@ class PERBuffer:
         beta_anneal_steps: int = 10_000,
         eps: float = 1e-6,
         decay_lambda: float = 0.001,
+        engine: Optional["Engine"] = None,
     ) -> None:
         self._tree = SumTree(maxlen)
         self._alpha = alpha
@@ -100,6 +104,7 @@ class PERBuffer:
         self._step = 0
         self._max_priority = 1.0
         self._timestamps: deque[int] = deque(maxlen=maxlen)
+        self._engine = engine
 
     @property
     def beta(self) -> float:
@@ -159,6 +164,101 @@ class PERBuffer:
             priority = self._priority(float(td_err), age=max(age, 0))
             self._tree.update(int(idx), priority)
             self._max_priority = max(self._max_priority, priority)
+
+    def push_to_db(
+        self,
+        transition: Transition,
+        *,
+        agent_id: int,
+        episode_id: str,
+        step: int,
+        symbol: str = "",
+        td_error: float = 1.0,
+    ) -> None:
+        """Persist a single transition to the rl_transitions DB table (FR-5.2).
+
+        Also adds the transition to the in-memory buffer so training can proceed
+        immediately without a hydrate round-trip.
+        """
+        from sqlalchemy import text
+
+        engine = self._engine
+        if engine is None:
+            raise RuntimeError("PERBuffer.push_to_db requires engine= to be set")
+
+        state_list = transition.state.tolist()
+        action_list = transition.action.tolist()
+        next_state_list = transition.next_state.tolist()
+
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO rl_transitions
+                        (agent_id, episode_id, step, symbol,
+                         state, action, reward, next_state, done, td_error)
+                    VALUES
+                        (:agent_id, :episode_id, :step, :symbol,
+                         :state, :action, :reward, :next_state, :done, :td_error)
+                    ON CONFLICT DO NOTHING
+                    """
+                ),
+                {
+                    "agent_id": agent_id,
+                    "episode_id": episode_id,
+                    "step": step,
+                    "symbol": symbol,
+                    "state": state_list,
+                    "action": action_list,
+                    "reward": float(transition.reward),
+                    "next_state": next_state_list,
+                    "done": bool(transition.done),
+                    "td_error": float(td_error),
+                },
+            )
+        self.add(transition, td_error)
+
+    def hydrate_from_db(self, *, agent_id: int, limit: int = 50_000) -> int:
+        """Load up to `limit` transitions from rl_transitions into the in-memory buffer.
+
+        Returns the number of transitions loaded. Skips rows with invalid data.
+        """
+        from sqlalchemy import text
+
+        engine = self._engine
+        if engine is None:
+            raise RuntimeError("PERBuffer.hydrate_from_db requires engine= to be set")
+
+        loaded = 0
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    """
+                    SELECT state, action, reward, next_state, done, td_error
+                    FROM rl_transitions
+                    WHERE agent_id = :agent_id
+                    ORDER BY ingested_at DESC
+                    LIMIT :lim
+                    """
+                ),
+                {"agent_id": agent_id, "lim": limit},
+            ).fetchall()
+
+        for row in rows:
+            try:
+                t = Transition(
+                    state=np.array(row.state, dtype=np.float32),
+                    action=np.array(row.action, dtype=np.float32),
+                    reward=float(row.reward),
+                    next_state=np.array(row.next_state, dtype=np.float32),
+                    done=bool(row.done),
+                )
+                self.add(t, float(row.td_error) if row.td_error is not None else None)
+                loaded += 1
+            except Exception:
+                continue
+
+        return loaded
 
     def __len__(self) -> int:
         return len(self._tree)
