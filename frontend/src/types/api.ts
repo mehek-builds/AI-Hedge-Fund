@@ -32,8 +32,10 @@ export interface Position {
   avg_entry_price: number | null;
   current_price: number | null;
   unrealized_pnl: number | null;
+  unrealized_pnl_pct: number | null;
   stop_loss_price: number | null;
   take_profit_price: number | null;
+  thesis_status: "INTACT" | "MONITOR" | "BROKEN" | null;
   status: string | null;
 }
 
