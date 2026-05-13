@@ -1,68 +1,142 @@
-"""Wave 0 stubs -- FR-5.6 (Diversity monitor)."""
-import os
-import sys
+"""Tests for rl/diversity_monitor.py (FR-5.6).
 
-# Add repo root to path so `rl` package is importable from backend/
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+TDD RED phase: these tests must fail before diversity_monitor.py is created.
+"""
+
+from __future__ import annotations
+
+import sys
+import os
+import types
+from unittest.mock import MagicMock, patch, call
 
 import pytest
 import torch
+import torch.nn as nn
 
-# These imports will fail until Wave 4 creates rl/diversity_monitor.py
-pytest.importorskip("rl.diversity_monitor", reason="Wave 4 creates this module")
-from rl.diversity_monitor import compute_pairwise_diversity
+# Ensure root is in path so rl/ is importable
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
+
+# ---------------------------------------------------------------------------
+# Minimal stub agent that has cont_actor returning two tensors (alpha, beta)
+# ---------------------------------------------------------------------------
+
+class _FakeContActor(nn.Module):
+    def __init__(self, alpha_val: float, beta_val: float) -> None:
+        super().__init__()
+        self._alpha = torch.tensor([[alpha_val]])
+        self._beta = torch.tensor([[beta_val]])
+
+    def forward(self, obs: torch.Tensor):
+        batch = obs.shape[0]
+        return self._alpha.expand(batch, 1), self._beta.expand(batch, 1)
+
+
+class _FakeAgent:
+    def __init__(self, alpha_val: float, beta_val: float) -> None:
+        self.cont_actor = _FakeContActor(alpha_val, beta_val)
+
+
+# ---------------------------------------------------------------------------
+# Tests for should_fire_alert
+# ---------------------------------------------------------------------------
 
 def test_alert_fires_above_threshold():
-    """FR-5.6: When max pairwise cosine similarity > 0.9, alert must fire."""
+    """should_fire_alert returns True for max_sim strictly above 0.9."""
     from rl.diversity_monitor import should_fire_alert
-    assert should_fire_alert(max_sim=0.95) is True
-    assert should_fire_alert(max_sim=0.91) is True
+    assert should_fire_alert(0.95) is True
+    assert should_fire_alert(0.91) is True
 
 
 def test_no_alert_below_threshold():
-    """FR-5.6: When max similarity <= 0.9, no alert."""
+    """should_fire_alert returns False at or below 0.9."""
     from rl.diversity_monitor import should_fire_alert
-    assert should_fire_alert(max_sim=0.85) is False
-    assert should_fire_alert(max_sim=0.90) is False
+    assert should_fire_alert(0.9) is False
+    assert should_fire_alert(0.85) is False
+    assert should_fire_alert(0.0) is False
 
+
+# ---------------------------------------------------------------------------
+# Tests for compute_pairwise_diversity
+# ---------------------------------------------------------------------------
 
 def test_compute_pairwise_diversity_signature():
-    """FR-5.6: Function returns a single float in [-1.0, 1.0]."""
-    # Wave 4 must implement this; stub asserts the contract.
-    import inspect
-    sig = inspect.signature(compute_pairwise_diversity)
-    params = list(sig.parameters.keys())
-    assert "agents" in params, f"Expected 'agents' param, got {params}"
+    """compute_pairwise_diversity accepts 'agents' param and returns (float, tuple)."""
+    from rl.diversity_monitor import compute_pairwise_diversity
 
+    agents = [_FakeAgent(1.0, 2.0), _FakeAgent(1.0, 2.0)]
+    sample_obs = torch.ones(4, 5)  # batch=4, obs_dim=5
+
+    result = compute_pairwise_diversity(agents=agents, sample_obs=sample_obs)
+    assert isinstance(result, tuple), "Should return a tuple"
+    assert len(result) == 2
+    max_sim, pair = result
+    assert isinstance(max_sim, float)
+    assert isinstance(pair, tuple)
+    assert len(pair) == 2
+
+
+def test_compute_pairwise_diversity_identical_agents():
+    """Identical agents should return max_sim of ~1.0."""
+    from rl.diversity_monitor import compute_pairwise_diversity
+
+    agents = [_FakeAgent(1.0, 2.0)] * 3
+    sample_obs = torch.ones(4, 5)
+
+    max_sim, pair = compute_pairwise_diversity(agents=agents, sample_obs=sample_obs)
+    assert max_sim == pytest.approx(1.0, abs=1e-5)
+
+
+def test_compute_pairwise_diversity_single_agent():
+    """Single agent returns max_sim=0.0 (no pairs)."""
+    from rl.diversity_monitor import compute_pairwise_diversity
+
+    agents = [_FakeAgent(1.0, 2.0)]
+    sample_obs = torch.ones(4, 5)
+
+    max_sim, _ = compute_pairwise_diversity(agents=agents, sample_obs=sample_obs)
+    assert max_sim == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Test for fire_diversity_alert (DB persistence + Celery dispatch)
+# ---------------------------------------------------------------------------
 
 def test_alert_dispatch():
-    """FR-5.6: fire_diversity_alert MUST enqueue a Celery dispatch_alert task with event_type='rl_diversity_alert'.
+    """fire_diversity_alert inserts into DB and calls dispatch_alert.delay."""
+    from rl.diversity_monitor import fire_diversity_alert
 
-    The Wave 4 implementation imports dispatch_alert inside a try/except so the unit test
-    needs no live Celery broker -- but it MUST verify that the dispatch_alert.delay path is
-    reached (otherwise alert failures are invisible).
-    """
-    from unittest.mock import patch, MagicMock
+    # Mock engine
+    mock_conn = MagicMock()
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+    mock_engine = MagicMock()
+    mock_engine.begin.return_value = mock_conn
 
-    # We patch the import target inside fire_diversity_alert. Wave 5 imports
-    # `from app.tasks.alerts import dispatch_alert` lazily inside the function,
-    # so we patch the source module attribute.
-    with patch("app.tasks.alerts.dispatch_alert") as mock_dispatch:
-        mock_dispatch.delay = MagicMock()
-        from rl.diversity_monitor import fire_diversity_alert
+    # Mock dispatch_alert Celery task
+    mock_dispatch = MagicMock()
+    mock_dispatch_task = MagicMock()
+    mock_dispatch_task.delay = MagicMock()
 
-        # Use an in-memory engine stub: persist_diversity_alert is exercised
-        # in DB-gated integration tests; here we only verify the Celery path.
-        engine_stub = MagicMock()
-        # engine.begin() is a context manager returning a connection-like object
-        engine_stub.begin.return_value.__enter__ = MagicMock(return_value=MagicMock())
-        engine_stub.begin.return_value.__exit__ = MagicMock(return_value=False)
+    fake_alerts_module = types.ModuleType("app.tasks.alerts")
+    fake_alerts_module.dispatch_alert = mock_dispatch_task
 
-        fire_diversity_alert(engine_stub, max_sim=0.95, agent_pair=(0, 1), epoch=7)
-
-        assert mock_dispatch.delay.called, "fire_diversity_alert must call dispatch_alert.delay"
-        kwargs = mock_dispatch.delay.call_args.kwargs
-        assert kwargs.get("event_type") == "rl_diversity_alert", (
-            f"event_type must be 'rl_diversity_alert', got {kwargs.get('event_type')}"
+    with patch.dict("sys.modules", {"app.tasks.alerts": fake_alerts_module}):
+        fire_diversity_alert(
+            mock_engine,
+            max_sim=0.95,
+            agent_pair=(0, 2),
+            epoch=3,
         )
+
+    # DB insert was called
+    assert mock_conn.execute.called, "Should have called conn.execute for DB insert"
+
+    # Celery dispatch was called
+    mock_dispatch_task.delay.assert_called_once()
+    call_kwargs = mock_dispatch_task.delay.call_args
+    # event_type must be 'rl_diversity_alert'
+    assert "rl_diversity_alert" in str(call_kwargs)

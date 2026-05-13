@@ -335,6 +335,17 @@ class SACEnsemble:
     def push(self, transition: Transition, td_error: float | None = None) -> None:
         self.buffer.add(transition, td_error)
 
+    def state_dict_bundle(self, agent_id: int) -> dict:
+        """Bundle one agent's tensors for checkpoint serialization (FR-5.7)."""
+        agent = self.agents[agent_id]
+        return {
+            "cont_actor": agent.cont_actor.state_dict(),
+            "disc_actor": agent.disc_actor.state_dict(),
+            "critic": agent.critic.state_dict(),
+            "critic_target": agent.critic_target.state_dict(),
+            "log_alpha": agent.log_alpha.detach().cpu(),
+        }
+
     def update_all(self) -> list[SACUpdate] | None:
         if len(self.buffer) < self.cfg.online_batch_size:
             return None
