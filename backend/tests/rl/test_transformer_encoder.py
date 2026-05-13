@@ -24,3 +24,26 @@ def test_frozen_encoder():
     enc = TransformerStateEncoder()
     enc.freeze()
     assert all(not p.requires_grad for p in enc.parameters())
+
+
+def test_frozen_encoder_loads_weights(tmp_path):
+    """FR-5.4: from_pretrained loads checkpoint AND freezes every parameter."""
+    import torch
+    from rl.transformer_encoder import TransformerStateEncoder
+
+    src = TransformerStateEncoder(input_dim=31, d_model=64, n_heads=4, n_layers=3)
+    sentinel_before = next(src.parameters()).detach().clone()
+
+    ckpt = tmp_path / "transformer_pretrained.pt"
+    torch.save(src.state_dict(), ckpt)
+
+    loaded = TransformerStateEncoder.from_pretrained(
+        str(ckpt), input_dim=31, d_model=64, n_heads=4, n_layers=3
+    )
+
+    assert all(not p.requires_grad for p in loaded.parameters()), \
+        "from_pretrained must call freeze() — every parameter requires_grad must be False"
+
+    sentinel_after = next(loaded.parameters()).detach().clone()
+    assert torch.allclose(sentinel_before, sentinel_after, atol=1e-6), \
+        "Loaded weights do not match saved weights — load_state_dict failed silently?"
