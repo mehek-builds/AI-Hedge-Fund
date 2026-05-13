@@ -1,9 +1,9 @@
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, Date, Integer, Numeric, Text, func
+from sqlalchemy import Boolean, Numeric, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,57 +11,33 @@ from app.database import Base
 
 
 class BacktestRun(Base):
-    """Persisted results and gate status for a single backtest run.
-
-    FR-6.4: gate_status is the go/no-go pivot for Phase 7 startup.
-    FR-6.6: columns match Phase 8 Backtest Explorer query needs.
-
-    The primary key column is named 'id' in the DB; the Python attribute
-    `run_id` is an alias provided for convenience in application code.
-    """
+    """Backtest run record storing results and macro gate status."""
 
     __tablename__ = "backtest_runs"
-    __table_args__ = (
-        CheckConstraint(
-            "gate_status IN ('pending', 'pass', 'fail')",
-            name="chk_gate_status",
-        ),
-    )
 
-    id: Mapped[str] = mapped_column(
+    run_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
         primary_key=True,
         default=lambda: str(uuid4()),
     )
-    start_date: Mapped[date] = mapped_column(Date, nullable=False)
-    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+    name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True, server_default="pending"
+    )  # pending | running | completed | failed
+    macro_gate_open: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    sharpe_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    total_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6), nullable=True)
+    max_drawdown: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    params: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    results: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 
-    # Slice type: 'main' or 'ex_2020' (FR-6.5)
-    slice_type: Mapped[str] = mapped_column(Text, nullable=False, server_default="main")
-
-    # Performance statistics (FR-6.3)
-    sharpe: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6), nullable=True)
-    max_drawdown: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6), nullable=True)
-    ir_vs_baseline: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6), nullable=True)
-    calmar: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6), nullable=True)
-    monthly_returns: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
-
-    # Gate outcome: FR-6.4
-    gate_status: Mapped[str] = mapped_column(Text, nullable=False, server_default="pending")
-    gate_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-
-    # Flag for ex-2020 stress slice (FR-6.5)
-    is_partial_year: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
-
-    # Number of non-None replay_step results (trade events processed)
-    total_trades: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-
-    # Config snapshot for reproducibility and Phase 8 Explorer display
-    config_snapshot: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
-
-    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
-
-    @property
-    def run_id(self) -> str:
-        """Alias for `id` — used in application code for clarity."""
-        return self.id
+    # FR-1.5 point-in-time column
+    ingestion_timestamp: Mapped[datetime] = mapped_column(
+        nullable=False,
+        server_default=func.now(),
+    )

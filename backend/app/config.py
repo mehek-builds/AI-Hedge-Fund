@@ -25,5 +25,10 @@ class Settings(BaseSettings):
     # Phase 6 backtest gate override (use only with explicit human review — see runbook)
     BACKTEST_OVERRIDE_GATE_PASS: bool = False
 
+    # Runtime-adjustable trading flags (can be patched via /api/v1/settings)
+    ENABLE_SHORT_SIDE: bool = True
+    STOP_LOSS_PCT: float = 0.05
+    TAKE_PROFIT_PCT: float = 0.15
+
 
 settings = Settings()

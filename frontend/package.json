@@ -12,7 +12,9 @@
   "dependencies": {
     "next": "16.2.4",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "recharts": "^2.12.7",
+    "lucide-react": "^0.475.0"
   },
   "devDependencies": {
     "typescript": "6.0.3",

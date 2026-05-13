@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import NavSidebar from "@/src/components/NavSidebar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,8 +16,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={inter.className} style={{ backgroundColor: "#0A1628" }}>
-        {children}
+      <body
+        className={inter.className}
+        style={{
+          backgroundColor: "var(--color-bg)",
+          display: "flex",
+          minHeight: "100vh",
+        }}
+      >
+        <NavSidebar />
+        <main style={{ flex: 1, overflow: "auto" }}>{children}</main>
       </body>
     </html>
   );
