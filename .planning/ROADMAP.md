@@ -13,10 +13,10 @@ The system is built in a strict dependency order: stable infrastructure before d
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Infrastructure & Data Foundation** - Docker Compose, TimescaleDB schema, Railway deployment, CI pipeline, point-in-time architecture (completed 2026-05-03)
-- [ ] **Phase 2: Data Pipelines** - Prefect flows for prices, FRED macro, FF5 factors, earnings calendar, S&P 500 constituent history
+- [x] **Phase 2: Data Pipelines** - Prefect flows for prices, FRED macro, FF5 factors, earnings calendar, S&P 500 constituent history (completed 2026-05-03)
 - [x] **Phase 3: Signal Engine** - Market-implied EPS, earnings quality decomposition, three-axis composite, sector hurdles, naive baseline (completed 2026-05-03)
 - [x] **Phase 4: Portfolio Architecture** (completed 2026-05-03) - Macro composite gate, ERP monitor, Mag-7 controls, completion portfolio optimizer
-- [ ] **Phase 5: SAC Ensemble RL** - 5-agent SAC with PER, MoE meta-controller, Transformer encoder, diversity monitoring
+- [x] **Phase 5: SAC Ensemble RL** - 5-agent SAC with PER, MoE meta-controller, Transformer encoder, diversity monitoring (completed 2026-05-13)
 - [ ] **Phase 6: Backtest Engine + Validation Gate** - 2018-2023 point-in-time replay, full stats, Sharpe > 1.0 go/no-go gate
 - [ ] **Phase 7: Alpaca Execution + Alerting** - Bracket orders, position sync, orphan detection, SendGrid+Slack alerts, 9 event types
 - [ ] **Phase 8: Frontend Dashboard** - Next.js 14 dark dashboard, SSE real-time, all 8 views
