@@ -1,21 +1,24 @@
-"""CLI entrypoint for running the full 2018-2023 backtest.
+"""Phase 6 backtest CLI entrypoint.
 
 Usage:
-    python backend/scripts/run_full_backtest.py
-    python backend/scripts/run_full_backtest.py --start 2018-01-01 --end 2023-12-31
-    python backend/scripts/run_full_backtest.py --ex2020  # also run ex-2020 stress slice
+    python -m scripts.run_full_backtest [--start YYYY-MM-DD] [--end YYYY-MM-DD]
+                                        [--fast] [--override-gate]
 
-FR-6.4: prints gate_status at end (backtest_gate_pass or backtest_gate_fail).
-FR-6.5: --ex2020 flag runs the exclude-March/April-2020 slice as a separate run.
+Runs main + ex-2020 slices, persists two backtest_runs rows, evaluates the
+Sharpe gate (>= 1.0 main AND >= 0.8 ex-2020), and fires the gate alert.
+Exit code 0 on pass/pending, 2 on fail.
 """
 
+from __future__ import annotations
+
 import argparse
+import json
 import logging
-import sys
 import os
+import sys
 from datetime import date
 
-# Add repo root and backend to sys.path
+# Add backend and repo root to sys.path for module resolution
 _BACKEND = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _ROOT = os.path.abspath(os.path.join(_BACKEND, ".."))
 for _p in [_BACKEND, _ROOT]:
@@ -26,151 +29,88 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
-logger = logging.getLogger("run_full_backtest")
+
+from app.backtest.runner import run_backtest, update_gate_status  # noqa: E402
+from app.backtest.gate import evaluate_gate_v2 as evaluate_gate  # noqa: E402
+from app.backtest.alerts import fire_gate_alert_v2 as fire_gate_alert  # noqa: E402
+from app.config import settings  # noqa: E402
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run full 2018-2023 backtest")
-    parser.add_argument(
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Run Phase 6 backtest (main + ex-2020 slices).")
+    p.add_argument(
         "--start",
-        default="2018-01-02",
-        type=str,
-        help="Backtest start date (YYYY-MM-DD)",
+        type=lambda s: date.fromisoformat(s),
+        default=date(2018, 1, 1),
+        help="Backtest start date (YYYY-MM-DD, default 2018-01-01)",
     )
-    parser.add_argument(
+    p.add_argument(
         "--end",
-        default="2023-12-29",
-        type=str,
-        help="Backtest end date (YYYY-MM-DD)",
+        type=lambda s: date.fromisoformat(s),
+        default=date(2023, 12, 31),
+        help="Backtest end date (YYYY-MM-DD, default 2023-12-31)",
     )
-    parser.add_argument(
-        "--ex2020",
+    p.add_argument(
+        "--fast",
         action="store_true",
-        default=False,
-        help="Also run ex-March/April-2020 stress slice (FR-6.5)",
+        help="Run a 1-year slice (2022) for development; not gate-eligible.",
     )
-    parser.add_argument(
-        "--override-gate-pass",
+    p.add_argument(
+        "--override-gate",
         action="store_true",
-        default=False,
-        help="Force gate_status=pass regardless of Sharpe (documented bypass only)",
+        help="Force gate pass; equivalent to settings.BACKTEST_OVERRIDE_GATE_PASS=True.",
     )
-    return parser.parse_args()
+    return p.parse_args(argv)
 
 
-def _persist_run(result: dict, gate_result) -> str:
-    """Persist a backtest run to the DB and return the run_id."""
-    from app.flows._db import SyncSessionLocal
-    from app.models.backtest_runs import BacktestRun
-    from app.backtest.alerts import fire_gate_alert
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    start = args.start
+    end = args.end
+    if args.fast:
+        start = date(2022, 1, 1)
+        end = date(2022, 12, 31)
 
-    with SyncSessionLocal() as session:
-        run = BacktestRun(
-            start_date=result["start_date"],
-            end_date=result["end_date"],
-            sharpe=gate_result.full_sharpe,
-            gate_status=gate_result.gate_status,
-            is_partial_year=result.get("is_partial_year", False),
-            config_snapshot=result.get("config_snapshot"),
-        )
-        session.add(run)
-        session.flush()
-        run_id = run.id
-        fire_gate_alert(session, gate_result, run_id=run_id)
-        session.commit()
-
-    return run_id
-
-
-def main() -> None:
-    args = parse_args()
-
-    start = date.fromisoformat(args.start)
-    end = date.fromisoformat(args.end)
-
-    # Validate: end date must not be in the future
-    if end > date.today():
-        logger.error("end date %s is in the future — aborting to prevent look-ahead bias", end)
-        sys.exit(1)
-
-    from app.backtest.runner import BacktestConfig, run_backtest
-    from app.backtest.stats import compute_all_stats
-    from app.backtest.gate import evaluate_gate
-
-    logger.info("Starting full backtest: %s to %s", start, end)
-    config = BacktestConfig(
-        start_date=start,
-        end_date=end,
-        override_gate_pass=args.override_gate_pass,
-        run_label="full",
-    )
-    result = run_backtest(config)
-
-    stats = compute_all_stats(
-        daily_returns=result["daily_returns"],
-        naive_returns=None,
-        start_date=start,
+    print(f"[backtest] main slice: {start} to {end}", flush=True)
+    main_run = run_backtest(start, end, slice_type="main")
+    print(
+        f"[backtest] main run_id={main_run['run_id']} sharpe={main_run['sharpe']:.4f}",
+        flush=True,
     )
 
-    gate_result = evaluate_gate(
-        full_sharpe=stats["sharpe"],
-        override_gate_pass=args.override_gate_pass,
+    print(
+        f"[backtest] ex-2020 slice: {start} to {end} excluding 2020-03-01..2020-04-30",
+        flush=True,
+    )
+    ex2020_run = run_backtest(
+        start,
+        end,
+        slice_type="ex_2020",
+        exclude_date_range=(date(2020, 3, 1), date(2020, 4, 30)),
+    )
+    print(
+        f"[backtest] ex_2020 run_id={ex2020_run['run_id']} sharpe={ex2020_run['sharpe']:.4f}",
+        flush=True,
     )
 
-    run_id = _persist_run({**result, **stats}, gate_result)
-    logger.info(
-        "[backtest_%s] run_id=%s sharpe=%.3f max_dd=%.3f",
-        gate_result.gate_status,
-        run_id,
-        stats["sharpe"],
-        stats["max_drawdown"],
+    override = args.override_gate or settings.BACKTEST_OVERRIDE_GATE_PASS
+    gate = evaluate_gate(main_run, ex2020_run, override=override)
+    print(
+        f"[backtest] gate_status={gate['gate_status']} reason={gate['gate_reason']}",
+        flush=True,
     )
 
-    # Optional ex-2020 stress slice (FR-6.5)
-    if args.ex2020:
-        logger.info("Running ex-March/April-2020 stress slice")
-        ex2020_config = BacktestConfig(
-            start_date=start,
-            end_date=end,
-            exclude_start=date(2020, 3, 1),
-            exclude_end=date(2020, 4, 30),
-            override_gate_pass=args.override_gate_pass,
-            run_label="ex2020",
-        )
-        ex2020_result = run_backtest(ex2020_config)
-        ex2020_stats = compute_all_stats(
-            daily_returns=ex2020_result["daily_returns"],
-            naive_returns=None,
-            start_date=start,
-        )
-        ex2020_gate = evaluate_gate(
-            full_sharpe=ex2020_stats["sharpe"],
-            is_partial_year=True,
-        )
-        _persist_run({**ex2020_result, **ex2020_stats}, ex2020_gate)
-        logger.info(
-            "Ex-2020 slice: sharpe=%.3f max_dd=%.3f",
-            ex2020_stats["sharpe"],
-            ex2020_stats["max_drawdown"],
-        )
+    # Persist gate result on both rows (Phase 7 reads this)
+    update_gate_status(main_run["run_id"], gate["gate_status"], gate["gate_reason"])
+    update_gate_status(ex2020_run["run_id"], gate["gate_status"], gate["gate_reason"])
 
-        # Re-evaluate conjunctive gate with both slices
-        final_gate = evaluate_gate(
-            full_sharpe=stats["sharpe"],
-            ex2020_sharpe=ex2020_stats["sharpe"],
-            override_gate_pass=args.override_gate_pass,
-        )
-        logger.info(
-            "[final_gate_%s] full=%.3f ex2020=%.3f reason: %s",
-            final_gate.gate_status,
-            final_gate.full_sharpe,
-            final_gate.ex2020_sharpe,
-            final_gate.reason,
-        )
+    event = fire_gate_alert(gate["gate_status"], gate["gate_reason"], main_run["run_id"])
+    print(f"[backtest] alert fired: {json.dumps(event)}", flush=True)
 
-    if gate_result.gate_status != "pass":
-        sys.exit(2)
+    if gate["gate_status"] == "fail":
+        return 2
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

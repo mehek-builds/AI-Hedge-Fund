@@ -77,8 +77,6 @@ def load_active_events_as_of(session: Session, as_of: datetime) -> list:
     argument. Uses the EarningsEvent ORM when available, falls back to row tuples.
     """
     try:
-        from app.models.earnings_events import EarningsEvent
-
         rows = session.execute(
             text(
                 """
@@ -128,7 +126,8 @@ def replay_step(session: Session, ensemble, moe, as_of: datetime, event) -> Opti
     """
     from app.signals.pipeline import compute_signal_for_event
     from app.portfolio.macro_loader import load_macro_snapshot
-    from app.backtest.fills import get_close_as_of, simulate_fill
+    from app.backtest.fills import get_close_as_of
+    from sqlalchemy import text as _text
 
     event_id = event.id if hasattr(event, "id") else event[0]
 
@@ -137,9 +136,6 @@ def replay_step(session: Session, ensemble, moe, as_of: datetime, event) -> Opti
         return None
 
     # Load signal ORM row
-    from sqlalchemy.orm import Session as _Session
-    from sqlalchemy import text as _text
-
     signal_row = session.execute(
         _text(
             """
@@ -170,9 +166,6 @@ def replay_step(session: Session, ensemble, moe, as_of: datetime, event) -> Opti
     symbol = signal_obj.symbol
     direction = signal_obj.direction
     naive_size = float(signal_obj.naive_position_size or 0.02)
-
-    # Get portfolio NAV for fill sizing
-    nav = _get_portfolio_nav(session, as_of)
 
     # Get close price (point-in-time)
     close = get_close_as_of(session, symbol, as_of)
