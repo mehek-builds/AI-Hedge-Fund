@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.database import engine
-from app.routers import health, stream
+from app.routers import health, stream, orders
 from app.routers import (
     dashboard,
     positions_router,
@@ -36,3 +36,4 @@ app.include_router(backtest_router.router, prefix="/api/v1")
 app.include_router(settings_router.router, prefix="/api/v1")
 app.include_router(macro_router.router, prefix="/api/v1")
 app.include_router(rl_router.router, prefix="/api/v1")
+app.include_router(orders.router, prefix="/api/v1")
