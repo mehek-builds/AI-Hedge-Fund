@@ -1,32 +1,18 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import NavSidebar from "@/src/components/NavSidebar";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "PEAD Trading System",
+  title: "PEAD System",
+  description: "Post-Earnings-Announcement-Drift trading operator dashboard",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body
-        className={inter.className}
-        style={{
-          backgroundColor: "var(--color-bg)",
-          display: "flex",
-          minHeight: "100vh",
-        }}
-      >
-        <NavSidebar />
-        <main style={{ flex: 1, overflow: "auto" }}>{children}</main>
-      </body>
+    <html lang="en">
+      <body className={inter.variable}>{children}</body>
     </html>
   );
 }

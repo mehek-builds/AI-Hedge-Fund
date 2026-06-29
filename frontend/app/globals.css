@@ -1,34 +1,63 @@
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 @theme {
-  --color-bg-primary: #0A1628;
-  --color-brand-primary: #2471A3;
-  --color-positive: #148F77;
-  --color-negative: #C0392B;
+  --color-bg-base: #080C14;
+  --color-bg-panel: #0D1421;
+  --color-bg-card: #111827;
+  --color-border: #1E2A3B;
+  --color-border-strong: #2A3A50;
+
+  --color-text-primary: #E2E8F0;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #4B6280;
+
+  --color-accent: #2471A3;
+  --color-accent-hover: #1A5C8A;
+  --color-amber: #E8931A;
+
+  --color-positive: #22C55E;
+  --color-negative: #EF4444;
+  --color-warning: #F59E0B;
+
   --font-family-ui: "Inter", system-ui, sans-serif;
   --font-family-mono: "JetBrains Mono", "Fira Code", monospace;
 }
 
-:root {
-  --color-bg: #0A1628;
-  --color-surface: #0F2040;
-  --color-accent: #2471A3;
-  --color-muted: #6B8EAD;
-  --color-positive: #27AE60;
-  --color-warning: #E67E22;
-  --color-danger: #E74C3C;
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
-  background-color: var(--color-bg);
-  color: white;
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
   font-family: var(--font-family-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-.mono {
-  font-family: "JetBrains Mono", monospace;
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg-panel); }
+::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+
+/* Mono number utility */
+.num {
+  font-family: var(--font-family-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
-@keyframes skeleton-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
+.pos { color: var(--color-positive); }
+.neg { color: var(--color-negative); }
+.warn { color: var(--color-warning); }
+.amber { color: var(--color-amber); }
+.muted { color: var(--color-text-muted); }
+.secondary { color: var(--color-text-secondary); }
