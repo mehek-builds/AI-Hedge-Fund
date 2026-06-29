@@ -105,10 +105,10 @@ class RLAgent:
     ) -> tuple[np.ndarray, Any]:
         """Run inference on a single observation."""
         if self._model is None:
-            # Naive baseline: size proportional to signal strength (obs[1])
+            # Naive baseline: size proportional to signal strength (obs[1]), mid hold_bin=3 (45 days)
             signal = float(obs[1]) if len(obs) > 1 else 0.0
             action = np.clip(signal / 5.0, -1.0, 1.0)
-            return np.array([action], dtype=np.float32), None
+            return np.array([action, 3.0], dtype=np.float32), None
         return self._model.predict(obs, deterministic=deterministic)
 
     def save(self, name: str = "pead_agent") -> Path:
