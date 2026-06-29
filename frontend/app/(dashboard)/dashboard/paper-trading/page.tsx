@@ -9,7 +9,7 @@ import {
 } from "recharts";
 
 const STARTING_NAV = 1000;
-const ALLOCATION_PER_POS = 190; // $190 each × 5 = $950 invested, $50 cash buffer
+const ALLOCATION_PER_POS = 95; // $95 each × 10 = $950 invested, $50 cash buffer
 
 interface PositionMeta {
   ticker: string;
@@ -17,43 +17,91 @@ interface PositionMeta {
   sector: string;
   thesis: string;
   signal: string;
+  type: "PEAD" | "WATCH";
 }
 
 const POSITION_META: PositionMeta[] = [
+  // ── Real PEAD picks (verified earnings beats, Jun/May 2026) ──
+  {
+    ticker: "MU",
+    allocation: ALLOCATION_PER_POS,
+    sector: "Info Tech",
+    thesis: "Q3 2026: EPS $25.11 vs $20.71 est (+21.2%) · reported Jun 25 · price pulled back 7% post-earnings, drift pending",
+    signal: "0.91",
+    type: "PEAD",
+  },
+  {
+    ticker: "CRM",
+    allocation: ALLOCATION_PER_POS,
+    sector: "Info Tech",
+    thesis: "Q1 2026: EPS $3.88 vs $3.13 est (+24.1%) · reported May 28 · largest beat on board, price still suppressed",
+    signal: "0.89",
+    type: "PEAD",
+  },
+  {
+    ticker: "SNOW",
+    allocation: ALLOCATION_PER_POS,
+    sector: "Info Tech",
+    thesis: "Q1 2026: EPS $0.39 vs $0.32 est (+21.9%) · reported May 28 · drift started +5.3%, still early",
+    signal: "0.86",
+    type: "PEAD",
+  },
+  {
+    ticker: "TGT",
+    allocation: ALLOCATION_PER_POS,
+    sector: "Cons Disc",
+    thesis: "Q1 2026: EPS $1.71 vs $1.46 est (+17.3%) · reported May 20 · drift confirmed +11% in 40 days",
+    signal: "0.82",
+    type: "PEAD",
+  },
+  {
+    ticker: "DE",
+    allocation: ALLOCATION_PER_POS,
+    sector: "Industrials",
+    thesis: "Q2 2026: EPS $6.55 vs $5.74 est (+14.1%) · reported May 15 · drift confirmed +10% in 45 days",
+    signal: "0.78",
+    type: "PEAD",
+  },
+  // ── Original watchlist positions ──
   {
     ticker: "NVDA",
     allocation: ALLOCATION_PER_POS,
     sector: "Info Tech",
-    thesis: "Data center AI beat · guidance raised · EPS gap +2.3σ",
-    signal: "0.87",
+    thesis: "Q1 2026: EPS $1.87 vs $1.77 est (+5.5%) · reported May 28 · sold off post-earnings, watching for reversal",
+    signal: "0.72",
+    type: "WATCH",
   },
   {
     ticker: "AMD",
     allocation: ALLOCATION_PER_POS,
     sector: "Info Tech",
-    thesis: "MI300X shipment acceleration · beat+raise · EPS gap +1.8σ",
-    signal: "0.79",
+    thesis: "MI300X AI GPU shipment ramp · no Q1 2026 earnings in window · momentum position",
+    signal: "0.65",
+    type: "WATCH",
   },
   {
     ticker: "GOOGL",
     allocation: ALLOCATION_PER_POS,
     sector: "Comm Svcs",
-    thesis: "Cloud margin expansion · Search ad recovery · EPS gap +1.9σ",
-    signal: "0.81",
+    thesis: "Cloud + Search ad recovery · no recent earnings beat in PEAD window · momentum position",
+    signal: "0.63",
+    type: "WATCH",
   },
   {
     ticker: "AMZN",
     allocation: ALLOCATION_PER_POS,
     sector: "Cons Disc",
-    thesis: "AWS re-acceleration · operating income beat · EPS gap +2.1σ",
-    signal: "0.83",
+    thesis: "AWS re-acceleration · no recent earnings beat in PEAD window · momentum position",
+    signal: "0.64",
+    type: "WATCH",
   },
   {
     ticker: "UBER",
     allocation: ALLOCATION_PER_POS,
     sector: "Industrials",
-    thesis: "EBITDA inflection · profitability beat · EPS gap +1.7σ",
-    signal: "0.76",
+    thesis: "EBITDA inflection · no recent earnings beat in PEAD window · momentum position",
+    signal: "0.61",
+    type: "WATCH",
   },
 ];
 
@@ -221,7 +269,7 @@ export default function PaperTradingPage() {
           </div>
 
           {/* Position table */}
-          <SectionHeader title="Open positions" right="paper · 5 active" />
+          <SectionHeader title="Open positions" right={`paper · ${POSITION_META.length} active · 5 PEAD + 5 WATCH`} />
           <div style={{
             display: "grid",
             gridTemplateColumns: "50px 42px 70px 70px 64px 64px 60px 52px 1fr",
@@ -307,7 +355,10 @@ function PositionRow({ pos }: { pos: EnrichedPosition }) {
       borderBottom: "1px solid var(--color-border)",
       background: atRisk ? "rgba(239,68,68,0.04)" : undefined,
     }}>
-      <span className="num" style={{ fontSize: 10, fontWeight: 600, color: "var(--color-text-primary)" }}>{pos.ticker}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        <span className="num" style={{ fontSize: 10, fontWeight: 600, color: "var(--color-text-primary)" }}>{pos.ticker}</span>
+        <span style={{ fontSize: 7, fontWeight: 600, letterSpacing: "0.06em", color: pos.type === "PEAD" ? "var(--color-amber)" : "var(--color-text-muted)" }}>{pos.type}</span>
+      </div>
       <span className="num muted" style={{ fontSize: 10, textAlign: "right" }}>{pos.shares > 0 ? pos.shares.toFixed(4) : "--"}</span>
       <span className="num muted" style={{ fontSize: 10, textAlign: "right" }}>{pos.entryPrice > 0 ? fmtCurrency(pos.entryPrice, 2) : "--"}</span>
       <span className="num" style={{ fontSize: 10, textAlign: "right", color: "var(--color-text-primary)" }}>{pos.currentPrice > 0 ? fmtCurrency(pos.currentPrice, 2) : "--"}</span>
@@ -332,7 +383,10 @@ function TickerCard({ pos, prices }: {
   return (
     <div style={{ borderBottom: "1px solid var(--color-border)", padding: "6px 10px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-        <span className="num" style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-primary)" }}>{pos.ticker}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span className="num" style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-primary)" }}>{pos.ticker}</span>
+          <span style={{ fontSize: 7, fontWeight: 600, letterSpacing: "0.06em", color: pos.type === "PEAD" ? "var(--color-amber)" : "var(--color-text-muted)" }}>{pos.type}</span>
+        </div>
         <div style={{ textAlign: "right" }}>
           <span className="num" style={{ fontSize: 11, color: "var(--color-text-primary)" }}>{pos.currentPrice > 0 ? fmtCurrency(pos.currentPrice) : "--"}</span>
           <span className={`num ${signClass(pos.unrealizedPnl)}`} style={{ fontSize: 9, marginLeft: 6 }}>
