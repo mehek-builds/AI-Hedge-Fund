@@ -99,7 +99,7 @@ interface EnrichedPosition extends PositionMeta {
   unrealizedPnl: number;
   unrealizedPct: number;
   posValue: number;
-  todayPnl1h: number;
+  dayPnl: number;
 }
 
 export default function PaperTradingPage() {
@@ -139,8 +139,9 @@ export default function PaperTradingPage() {
     const unrealizedPnl = (currentPrice - entryPrice) * shares;
     const unrealizedPct = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
     const posValue = currentPrice * shares;
-    const todayPnl1h = (live?.change1h ?? 0) * shares;
-    return { ...meta, entryPrice, shares, currentPrice, unrealizedPnl, unrealizedPct, posValue, todayPnl1h };
+    // Day P&L = move since yesterday's close (different from entry P&L)
+    const dayPnl = (live?.change ?? 0) * shares;
+    return { ...meta, entryPrice, shares, currentPrice, unrealizedPnl, unrealizedPct, posValue, dayPnl };
   });
 
   const costBasis = enriched.reduce((s, p) => s + p.entryPrice * p.shares, 0);
@@ -149,8 +150,8 @@ export default function PaperTradingPage() {
   const currentNav = totalPosValue + cash;
   const totalPnl = currentNav - STARTING_NAV;
   const totalPnlPct = (totalPnl / STARTING_NAV) * 100;
-  const totalPnl1h = enriched.reduce((s, p) => s + p.todayPnl1h, 0);
-  const totalPnl1hPct = (totalPnl1h / STARTING_NAV) * 100;
+  const totalDayPnl = enriched.reduce((s, p) => s + p.dayPnl, 0);
+  const totalDayPnlPct = (totalDayPnl / STARTING_NAV) * 100;
 
   const navChart = buildNavChart(prices, enriched);
   const navChartDisplay = navChart.length > 1 ? navChart : [];
@@ -167,18 +168,18 @@ export default function PaperTradingPage() {
         flexShrink: 0,
       }}>
         <StatCell label="Starting NAV" value={fmtCurrency(STARTING_NAV)} sub="Paper · today open" />
-        <StatCell label="Current NAV" value={isLoaded ? fmtCurrency(currentNav) : "--"} sub={loading ? "loading…" : `updated ${lastUpdated}`} />
+        <StatCell label="Current NAV" value={isLoaded ? fmtCurrency(currentNav, 2) : "--"} sub={loading ? "loading…" : `updated ${lastUpdated}`} />
         <StatCell
           label="Total P&L"
-          value={isLoaded ? fmtCurrency(totalPnl) : "--"}
+          value={isLoaded ? fmtCurrency(totalPnl, 2) : "--"}
           sub={isLoaded ? fmtPct(totalPnlPct) : ""}
           valueClass={signClass(totalPnl)}
         />
         <StatCell
-          label="1h P&L"
-          value={isLoaded ? fmtCurrency(totalPnl1h) : "--"}
-          sub={isLoaded ? fmtPct(totalPnl1hPct) : "since entry"}
-          valueClass={signClass(totalPnl1h)}
+          label="Day P&L"
+          value={isLoaded ? fmtCurrency(totalDayPnl, 2) : "--"}
+          sub={isLoaded ? fmtPct(totalDayPnlPct) : "vs prev close"}
+          valueClass={signClass(totalDayPnl)}
         />
         <StatCell label="Cash" value={isLoaded ? fmtCurrency(cash) : "--"} sub={isLoaded ? `${fmtPct((cash / STARTING_NAV) * 100)} of NAV` : ""} />
         <StatCell label="Positions" value={`${POSITION_META.length}`} sub="all long · 10d hold" />
@@ -227,8 +228,8 @@ export default function PaperTradingPage() {
             gap: 0, padding: "3px 10px",
             borderBottom: "1px solid var(--color-border)",
           }}>
-            {["Ticker", "Shrs", "Entry 1h", "Current", "P&L $", "P&L %", "1h P&L", "Stop", "Thesis"].map(h => (
-              <span key={h} style={{ fontSize: 9, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: ["Shrs", "Entry 1h", "Current", "P&L $", "P&L %", "1h P&L", "Stop"].includes(h) ? "right" : "left" }}>{h}</span>
+            {["Ticker", "Shrs", "Entry 1h", "Current", "P&L $", "P&L %", "Day P&L", "Stop", "Thesis"].map(h => (
+              <span key={h} style={{ fontSize: 9, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: ["Shrs", "Entry 1h", "Current", "P&L $", "P&L %", "Day P&L", "Stop"].includes(h) ? "right" : "left" }}>{h}</span>
             ))}
           </div>
           <div style={{ flex: 1, overflowY: "auto" }}>
@@ -247,11 +248,11 @@ export default function PaperTradingPage() {
           }}>
             <span className="num" style={{ fontSize: 9, color: "var(--color-text-muted)", textTransform: "uppercase" }}>Total</span>
             <span />
-            <span className="num muted" style={{ fontSize: 9, textAlign: "right" }}>{isLoaded ? fmtCurrency(costBasis) : "--"}</span>
-            <span className="num" style={{ fontSize: 9, textAlign: "right", color: "var(--color-text-primary)" }}>{isLoaded ? fmtCurrency(totalPosValue) : "--"}</span>
-            <span className={`num ${signClass(totalPnl)}`} style={{ fontSize: 9, textAlign: "right" }}>{isLoaded ? fmtCurrency(totalPnl) : "--"}</span>
+            <span className="num muted" style={{ fontSize: 9, textAlign: "right" }}>{isLoaded ? fmtCurrency(costBasis, 2) : "--"}</span>
+            <span className="num" style={{ fontSize: 9, textAlign: "right", color: "var(--color-text-primary)" }}>{isLoaded ? fmtCurrency(totalPosValue, 2) : "--"}</span>
+            <span className={`num ${signClass(totalPnl)}`} style={{ fontSize: 9, textAlign: "right" }}>{isLoaded ? fmtCurrency(totalPnl, 2) : "--"}</span>
             <span className={`num ${signClass(totalPnlPct)}`} style={{ fontSize: 9, textAlign: "right" }}>{isLoaded ? fmtPct(totalPnlPct) : "--"}</span>
-            <span className={`num ${signClass(totalPnl1h)}`} style={{ fontSize: 9, textAlign: "right" }}>{isLoaded ? fmtCurrency(totalPnl1h) : "--"}</span>
+            <span className={`num ${signClass(totalDayPnl)}`} style={{ fontSize: 9, textAlign: "right" }}>{isLoaded ? fmtCurrency(totalDayPnl, 2) : "--"}</span>
             <span /><span />
           </div>
         </div>
@@ -308,12 +309,12 @@ function PositionRow({ pos }: { pos: EnrichedPosition }) {
     }}>
       <span className="num" style={{ fontSize: 10, fontWeight: 600, color: "var(--color-text-primary)" }}>{pos.ticker}</span>
       <span className="num muted" style={{ fontSize: 10, textAlign: "right" }}>{pos.shares > 0 ? pos.shares.toFixed(4) : "--"}</span>
-      <span className="num muted" style={{ fontSize: 10, textAlign: "right" }}>{pos.entryPrice > 0 ? fmtCurrency(pos.entryPrice) : "--"}</span>
-      <span className="num" style={{ fontSize: 10, textAlign: "right", color: "var(--color-text-primary)" }}>{pos.currentPrice > 0 ? fmtCurrency(pos.currentPrice) : "--"}</span>
-      <span className={`num ${signClass(pos.unrealizedPnl)}`} style={{ fontSize: 10, textAlign: "right" }}>{pos.entryPrice > 0 ? fmtCurrency(pos.unrealizedPnl) : "--"}</span>
+      <span className="num muted" style={{ fontSize: 10, textAlign: "right" }}>{pos.entryPrice > 0 ? fmtCurrency(pos.entryPrice, 2) : "--"}</span>
+      <span className="num" style={{ fontSize: 10, textAlign: "right", color: "var(--color-text-primary)" }}>{pos.currentPrice > 0 ? fmtCurrency(pos.currentPrice, 2) : "--"}</span>
+      <span className={`num ${signClass(pos.unrealizedPnl)}`} style={{ fontSize: 10, textAlign: "right" }}>{pos.entryPrice > 0 ? fmtCurrency(pos.unrealizedPnl, 2) : "--"}</span>
       <span className={`num ${signClass(pos.unrealizedPct)}`} style={{ fontSize: 10, textAlign: "right" }}>{pos.entryPrice > 0 ? fmtPct(pos.unrealizedPct) : "--"}</span>
-      <span className={`num ${signClass(pos.todayPnl1h)}`} style={{ fontSize: 10, textAlign: "right" }}>{pos.entryPrice > 0 ? fmtCurrency(pos.todayPnl1h) : "--"}</span>
-      <span className="num muted" style={{ fontSize: 9, textAlign: "right" }}>{pos.entryPrice > 0 ? fmtCurrency(stopPrice) : "--"}</span>
+      <span className={`num ${signClass(pos.dayPnl)}`} style={{ fontSize: 10, textAlign: "right" }}>{pos.entryPrice > 0 ? fmtCurrency(pos.dayPnl, 2) : "--"}</span>
+      <span className="num muted" style={{ fontSize: 9, textAlign: "right" }}>{pos.entryPrice > 0 ? fmtCurrency(stopPrice, 2) : "--"}</span>
       <span style={{ fontSize: 9, color: "var(--color-text-muted)", paddingLeft: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pos.sector}</span>
     </div>
   );
