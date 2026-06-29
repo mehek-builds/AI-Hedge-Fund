@@ -1,11 +1,13 @@
+.env
 __pycache__/
 *.pyc
 *.pyo
-.env
+.pytest_cache/
 ml_models/
+models/
 tensorboard/
 *.zip
-web/node_modules/
-web/.next/
-.gstack/
+*.log
 graphify-out/
+node_modules/
+.DS_Store

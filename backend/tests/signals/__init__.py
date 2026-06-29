@@ -1,1 +1,0 @@
-# Signals test package

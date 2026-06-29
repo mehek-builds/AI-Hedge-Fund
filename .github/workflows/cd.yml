@@ -13,15 +13,12 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Deploy all services (except rl_trainer)
-        run: |
-          railway up --service fastapi --detach
-          railway up --service celery_worker --detach
-          railway up --service prefect_server --detach
-          railway up --service nextjs --detach
+      # Deploys backend/ — FastAPI + Celery worker run in the same container
+      # via backend/start.sh. Celery worker and prefect are excluded from CD:
+      # celery runs inside fastapi container; prefect is manual-only.
+      # Next.js frontend deploys automatically to Vercel via git push.
+      - name: Deploy FastAPI + Celery
+        run: railway up --service fastapi --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      # rl_trainer is intentionally excluded — it requires manual Railway deploy
-      # to prevent auto-deploy from killing in-progress training jobs.
-      # Deploy rl_trainer manually via: railway up --service rl_trainer
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}

@@ -1,10 +1,7 @@
 import pytest
 
-from tests.conftest import requires_db
-
 
 @pytest.mark.asyncio
-@requires_db
 async def test_health_endpoint_returns_ok(client):
     resp = await client.get("/health")
     assert resp.status_code == 200

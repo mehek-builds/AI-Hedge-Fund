@@ -92,14 +92,10 @@ def do_run_migrations(connection) -> None:
 
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode using an async engine."""
-    connect_args = {}
-    if os.environ.get("ALEMBIC_SSL_DISABLE"):
-        connect_args["ssl"] = False
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:
