@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 
 const VIEWS = [
@@ -17,7 +17,6 @@ const VIEWS = [
 
 export function NavShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [time, setTime] = useState("");
   const [sseOk, setSseOk] = useState(true);
 
@@ -35,11 +34,6 @@ export function NavShell({ children }: { children: React.ReactNode }) {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
-
-  function handleLogout() {
-    localStorage.removeItem("pead_token");
-    router.push("/login");
-  }
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
@@ -108,17 +102,6 @@ export function NavShell({ children }: { children: React.ReactNode }) {
           <span style={{ fontSize: 10, fontFamily: "var(--font-family-mono)", color: "var(--color-text-muted)" }}>
             {time}
           </span>
-          <button
-            onClick={handleLogout}
-            style={{
-              fontSize: 10, fontWeight: 500, letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "var(--color-text-muted)",
-              background: "none", border: "none", cursor: "pointer", padding: "2px 6px",
-            }}
-          >
-            OUT
-          </button>
         </div>
       </header>
 

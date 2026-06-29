@@ -23,7 +23,7 @@ JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24h
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 
 # ---------------------------------------------------------------------------
@@ -62,19 +62,15 @@ def verify_credentials(email: str, password: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
-    """Decode JWT and return the subject (email). Raises 401 on failure."""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)) -> str:
+    """Return user from JWT, or 'public' if no token provided (open access)."""
+    if token is None:
+        return "public"
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         sub: Optional[str] = payload.get("sub")
-        if sub is None:
-            raise credentials_exception
+        if sub is not None:
+            return sub
     except JWTError as exc:
         logger.debug(f"JWT decode error: {exc}")
-        raise credentials_exception
-    return sub
+    return "public"
