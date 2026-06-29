@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
 from api.routers import auth, macro, market, orders, portfolio, positions, rl, settings, signals
-from api.routers import backtest, alerts, architecture
+from api.routers import backtest, alerts, architecture, sse, dashboard
 
 app = FastAPI(
     title="PEAD Trading System API",
@@ -45,6 +45,8 @@ app.include_router(settings.router, prefix=API_PREFIX)
 app.include_router(backtest.router, prefix=API_PREFIX)
 app.include_router(alerts.router, prefix=API_PREFIX)
 app.include_router(architecture.router, prefix=API_PREFIX)
+app.include_router(sse.router, prefix=API_PREFIX)
+app.include_router(dashboard.router, prefix=API_PREFIX)
 
 # ---------------------------------------------------------------------------
 # Health check
