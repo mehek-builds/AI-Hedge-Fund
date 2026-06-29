@@ -133,7 +133,8 @@ export default function PaperTradingPage() {
   const enriched: EnrichedPosition[] = POSITION_META.map(meta => {
     const live = prices[meta.ticker];
     const entryPrice = live?.price1hAgo ?? live?.open ?? 0;
-    const shares = entryPrice > 0 ? Math.floor(meta.allocation / entryPrice) || 1 : 0;
+    // Fractional shares: paper money, so $190 allocation buys exactly $190 worth
+    const shares = entryPrice > 0 ? meta.allocation / entryPrice : 0;
     const currentPrice = live?.price ?? entryPrice;
     const unrealizedPnl = (currentPrice - entryPrice) * shares;
     const unrealizedPct = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
@@ -306,7 +307,7 @@ function PositionRow({ pos }: { pos: EnrichedPosition }) {
       background: atRisk ? "rgba(239,68,68,0.04)" : undefined,
     }}>
       <span className="num" style={{ fontSize: 10, fontWeight: 600, color: "var(--color-text-primary)" }}>{pos.ticker}</span>
-      <span className="num muted" style={{ fontSize: 10, textAlign: "right" }}>{pos.shares || "--"}</span>
+      <span className="num muted" style={{ fontSize: 10, textAlign: "right" }}>{pos.shares > 0 ? pos.shares.toFixed(4) : "--"}</span>
       <span className="num muted" style={{ fontSize: 10, textAlign: "right" }}>{pos.entryPrice > 0 ? fmtCurrency(pos.entryPrice) : "--"}</span>
       <span className="num" style={{ fontSize: 10, textAlign: "right", color: "var(--color-text-primary)" }}>{pos.currentPrice > 0 ? fmtCurrency(pos.currentPrice) : "--"}</span>
       <span className={`num ${signClass(pos.unrealizedPnl)}`} style={{ fontSize: 10, textAlign: "right" }}>{pos.entryPrice > 0 ? fmtCurrency(pos.unrealizedPnl) : "--"}</span>
