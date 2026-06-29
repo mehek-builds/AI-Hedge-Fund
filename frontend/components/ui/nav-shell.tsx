@@ -4,14 +4,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
 const VIEWS = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Signals",   href: "/dashboard/signals" },
-  { label: "Positions", href: "/dashboard/positions" },
-  { label: "RL Console",href: "/dashboard/rl" },
-  { label: "Macro",     href: "/dashboard/macro" },
-  { label: "Backtest",  href: "/dashboard/backtests" },
-  { label: "Alerts",    href: "/dashboard/alerts" },
-  { label: "Settings",  href: "/dashboard/settings" },
+  { label: "Dashboard",    href: "/dashboard" },
+  { label: "Signals",      href: "/dashboard/signals" },
+  { label: "Positions",    href: "/dashboard/positions" },
+  { label: "Paper Trade",  href: "/dashboard/paper-trading" },
+  { label: "RL Console",   href: "/dashboard/rl" },
+  { label: "Macro",        href: "/dashboard/macro" },
+  { label: "Backtest",     href: "/dashboard/backtests" },
+  { label: "Alerts",       href: "/dashboard/alerts" },
+  { label: "Settings",     href: "/dashboard/settings" },
 ];
 
 export function NavShell({ children }: { children: React.ReactNode }) {
