@@ -197,9 +197,7 @@ class BacktestEngine:
             steps = 0
             max_steps = CONFIG.signal.hold_max + 10
             while not terminated and not truncated and steps < max_steps:
-                # Re-use last action during hold period (agent is passive)
-                action_hold = np.array([float(action[0])], dtype=np.float32)
-                obs, reward, terminated, truncated, _ = env.step(action_hold)
+                obs, reward, terminated, truncated, _ = env.step(action)
                 steps += 1
 
             # The final reward is the FF5 alpha

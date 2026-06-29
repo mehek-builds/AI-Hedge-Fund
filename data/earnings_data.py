@@ -56,23 +56,41 @@ class EarningsDataClient:
         "Consumer Discretionary", "Financials"
     }
 
+    # Dates within this many days of today → use real data
+    _REAL_DATA_LOOKBACK_DAYS: int = 730   # 2 years
+
     def get_events(
         self,
         tickers: list[str],
         start: str = "2010-01-01",
         end: str = "2023-12-31",
     ) -> pd.DataFrame:
-        """Return a DataFrame of EarningsEvent records sorted by announce_date."""
+        """Return earnings events, routing to real data for recent windows."""
         logger.info(f"Loading earnings events for {len(tickers)} tickers [{start} → {end}]")
-        # In production: query Compustat/FactSet here.
-        # For now, generate synthetic events.
+
+        cutoff = pd.Timestamp.now() - pd.Timedelta(days=self._REAL_DATA_LOOKBACK_DAYS)
+        start_ts = pd.Timestamp(start)
+
+        if start_ts >= cutoff:
+            return self._get_real_events(tickers, start, end)
+
+        # Backtest range: use synthetic (real data has insufficient history)
         records = []
         for ticker in tickers:
             records.extend(self._synthetic_events(ticker, start, end))
-
         df = pd.DataFrame([vars(e) for e in records])
         df = df.sort_values("announce_date").reset_index(drop=True)
-        logger.info(f"Loaded {len(df)} earnings events")
+        logger.info(f"Loaded {len(df)} synthetic events (backtest mode)")
+        return df
+
+    def _get_real_events(self, tickers: list[str], start: str, end: str) -> pd.DataFrame:
+        """Delegate to RealEarningsClient for live/paper trading."""
+        from data.real_earnings_client import RealEarningsClient
+        import os
+        fmp_key = os.getenv("FMP_API_KEY", "")
+        client = RealEarningsClient(fmp_api_key=fmp_key)
+        df = client.get_events(tickers, start=start, end=end)
+        logger.info(f"Loaded {len(df)} real earnings events")
         return df
 
     def get_sector_fwd_pe(self, sector: str, date: pd.Timestamp) -> float:

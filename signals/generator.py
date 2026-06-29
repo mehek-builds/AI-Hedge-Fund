@@ -104,9 +104,12 @@ class SignalGenerator:
         events = events.copy()
         events["pre_announce_price"] = pre_prices
 
-        # Attach sector forward P/E if not already present
+        # Attach sector forward P/E — fill missing values
         if "sector_fwd_pe" not in events.columns:
-            events["sector_fwd_pe"] = events.apply(
+            events["sector_fwd_pe"] = None
+        mask = events["sector_fwd_pe"].isna()
+        if mask.any():
+            events.loc[mask, "sector_fwd_pe"] = events[mask].apply(
                 lambda r: self._earnings.get_sector_fwd_pe(r["sector"], r["announce_date"]),
                 axis=1,
             )

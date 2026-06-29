@@ -52,13 +52,25 @@ class EPSGapSignal:
         actual_eps: float,
         pre_announce_price: float,
         sector_fwd_pe: float,
+        consensus_eps: float | None = None,
     ) -> EarningsSurprise:
-        """Compute signal for a single earnings event."""
-        if sector_fwd_pe <= 0 or pre_announce_price <= 0:
-            return self._zero_signal(ticker, announce_date, actual_eps)
+        """Compute signal for a single earnings event.
 
-        implied_eps = pre_announce_price / sector_fwd_pe
-        raw_surprise = actual_eps - implied_eps
+        When consensus_eps is provided (real data path), use it directly as
+        the benchmark.  Otherwise fall back to the market-implied approach:
+        implied quarterly EPS = price / fwd_PE / 4.
+        """
+        if consensus_eps is not None and consensus_eps != 0:
+            # Real data: direct analyst consensus comparison
+            implied_eps = float(consensus_eps)
+            raw_surprise = actual_eps - implied_eps
+        else:
+            # Synthetic / no-consensus fallback
+            if sector_fwd_pe <= 0 or pre_announce_price <= 0:
+                return self._zero_signal(ticker, announce_date, actual_eps)
+            # Divide by 4 to convert annual fwd-PE implied EPS → quarterly
+            implied_eps = (pre_announce_price / sector_fwd_pe) / 4
+            raw_surprise = actual_eps - implied_eps
 
         # Update history and compute rolling std
         history = self._surprise_history.setdefault(ticker, [])
@@ -95,6 +107,8 @@ class EPSGapSignal:
         if missing:
             raise ValueError(f"events_df missing columns: {missing}")
 
+        has_consensus = "consensus_eps" in events_df.columns
+
         results = []
         for _, row in events_df.iterrows():
             s = self.compute(
@@ -103,6 +117,7 @@ class EPSGapSignal:
                 actual_eps=row["actual_eps"],
                 pre_announce_price=row["pre_announce_price"],
                 sector_fwd_pe=row["sector_fwd_pe"],
+                consensus_eps=row["consensus_eps"] if has_consensus else None,
             )
             results.append({
                 "implied_eps":  s.implied_eps,
