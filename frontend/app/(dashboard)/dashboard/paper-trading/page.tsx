@@ -212,7 +212,7 @@ export default function PaperTradingPage() {
                     contentStyle={{ background: "var(--color-bg-panel)", border: "1px solid var(--color-border)", borderRadius: 4, fontSize: 11 }}
                     labelStyle={{ color: "var(--color-text-secondary)" }}
                     itemStyle={{ color: totalPnl >= 0 ? "var(--color-positive)" : "var(--color-negative)" }}
-                    formatter={(v: number) => [`$${v.toFixed(2)}`, "NAV"]}
+                    formatter={(v) => [typeof v === "number" ? `$${v.toFixed(2)}` : "--", "NAV"]}
                   />
                   <Area
                     type="monotone" dataKey="nav"
