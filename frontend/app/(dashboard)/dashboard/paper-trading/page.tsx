@@ -246,7 +246,7 @@ export default function PaperTradingPage() {
           />
 
           {/* Puts table */}
-          <SectionHeader title="Put positions" right={`${PUT_META.length} active · ATM delta -0.5 model · ${isLoaded ? fmtCurrency(putCurrentValue, 2) : "$1,000.00"}`} accent="var(--color-negative)" />
+          <SectionHeader title="Put positions" right={`${PUT_META.length} active · ATM delta -0.5 model · ${isLoaded ? fmtCurrency(putCurrentValue, 2) : "$1,000.00"}`} />
           <TableHeader cols={["Ticker", "Alloc", "Underlying", "Now", "Put P&L", "P&L %", "Day", "Model", "Thesis"]} />
           <div style={{ flex: "0 0 auto", overflowY: "auto", maxHeight: 180 }}>
             {puts.map(pos => <PutRow key={pos.ticker} pos={pos} isLoaded={isLoaded} />)}
