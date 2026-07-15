@@ -1,30 +1,6 @@
 # PEAD RL Trader
 
-An autonomous, end-to-end trading system that harvests **Post-Earnings-Announcement Drift (PEAD)** across the S&P 500, sizing every position with a **reinforcement-learning agent trained to maximise risk-adjusted (Fama-French 5-factor) alpha** rather than raw return.
-
-This is not a backtest notebook. It is a full production stack: a point-in-time data layer, a factor-and-quality-adjusted signal engine, an RL sizing agent (PPO and SAC, with a mixture-of-experts controller, prioritized experience replay, and a transformer state encoder), a macro-regime risk gate, an Alpaca paper-trading execution path, a Celery + Prefect orchestration layer, and a live Next.js operator dashboard, all wired together over FastAPI, PostgreSQL/TimescaleDB, and Redis.
-
----
-
-## The problem this solves
-
-When a company reports earnings, the market does not fully price the surprise on day one. Prices keep drifting in the direction of the surprise for **weeks** afterward. This is **Post-Earnings-Announcement Drift**, one of the most durable and heavily documented anomalies in empirical finance (Ball & Brown 1968, Bernard & Thomas 1989, and roughly five decades of replication since). It exists because human investors underreact to new information: they anchor on stale expectations and update too slowly.
-
-Knowing the anomaly exists is easy. **Trading it profitably and safely is hard**, for reasons that have nothing to do with the idea and everything to do with engineering:
-
-1. **Measuring the surprise correctly.** A naive "beat vs. miss" flag is noise. The real signal is *how large the surprise is relative to what price was already implying*, normalised by the stock's own historical surprise volatility.
-2. **Point-in-time data integrity.** Almost every public backtest of PEAD is silently contaminated by lookahead bias: restated earnings, survivorship in the universe, factor loadings computed with future data. If your data is not *as-of* correct to the day, your alpha is imaginary.
-3. **Position sizing under uncertainty.** The edge is real but small and noisy. Sizing every trade the same is how you blow up. The hard question is *how much* to hold, given signal strength, how long you have held, and where you are in the macro cycle.
-4. **Separating skill from beta.** A strategy that returns 12% in a year the market returned 11% has almost no alpha. Judging the system on raw P&L is self-deception; it has to be judged on **factor-adjusted** alpha (excess return after neutralising market, size, value, profitability, and investment exposure).
-5. **Regime risk.** PEAD, like most cross-sectional anomalies, degrades or inverts in liquidity crises and carry unwinds. A system that does not *watch the macro* and cut exposure will give back a year of edge in one bad month.
-
-**PEAD RL Trader is an attempt to solve all five as one integrated system** rather than a script that solves the first and ignores the rest.
-
-## Why you should care (even if you do not trade)
-
-If you are reading this to understand what I can build, here is the short version: this repository takes an academic finance anomaly and turns it into a **working, observable, autonomous software system**. It touches reinforcement learning, factor econometrics, real-time data engineering, async web services, job orchestration, and frontend dashboarding, and it holds them together with the kind of correctness discipline (point-in-time queries, `as-of` tests, factor-adjusted evaluation) that separates a real quant system from a curve-fit toy. The interesting part is not any single technology; it is that they are *composed* into something that runs on a schedule, makes decisions, executes them, and shows its work.
-
----
+Post-earnings-announcement drift is a well-known market anomaly that is hard to trade systematically. This is an autonomous system that trades it across the S&P 500, sizing every position with a reinforcement-learning agent optimised for risk-adjusted (Fama-French 5-factor) alpha, gated by a macro-regime risk model.
 
 ## System architecture
 
